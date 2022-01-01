@@ -35,40 +35,83 @@ import com.amazonaws.client.builder.AwsClientBuilder;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.*;
+import picocli.CommandLine;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
+import picocli.CommandLine.Parameters;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.Callable;
 
-public class Main {
-    private static AmazonS3 s3;
-    public static final String S3_ENDPOINT = "http://192.168.0.8:9000";
-    public static final String region = Region.CN_Beijing.toString();
-    // the S3 access key id - this is equivalent to the user
-    static final String S3_ACCESS_KEY_ID = "root";
-    // the S3 secret key associated with the S3_ACCESS_KEY_ID
-    static final String S3_SECRET_KEY = "ChangeMe";
+@Command(name = "s3cli", mixinStandardHelpOptions = true, version = "s3cli 1.0", description = "S3 command line tool")
+public class Main implements Callable<Integer> {
+    public static final String DEFAULT_ENDPOINT = "http://192.168.0.8:9000";
+    public static final String DEFAULT_ACCESS_KEY = "root";
+    public static final String DEFAULT_SECRET_KEY = "ChangeMe";
 
-    public static void main(String[] args) {
-        String bucket = "";
-        String key = "";
+    private AmazonS3 s3 = null;
+    // S3 endpoint
+    @Option(names = {"-e", "--endpoint"}, defaultValue =DEFAULT_ENDPOINT, description = "S3 endpoint")
+    private String endpoint = DEFAULT_ENDPOINT;
 
+    // S3 endpoint
+    @Option(names = {"-r", "--region"}, defaultValue = "cn-north-1", description = "S3 endpoint")
+    private String region = Region.CN_Beijing.toString();
+
+    // S3 access key
+    @Option(names = {"-a", "--ak"}, defaultValue = DEFAULT_ACCESS_KEY, description = "S3 access key")
+    private String accessKey = DEFAULT_ACCESS_KEY;
+
+    // S3 access key
+    @Option(names = {"-s", "--sk"},defaultValue = DEFAULT_SECRET_KEY, description = "S3 secret key")
+    private String secretKey = DEFAULT_SECRET_KEY;
+
+    // S3 Bucket name
+    @Option(names = {"-b", "--bucket"}, description = "S3 Bucket name")
+    private String bucket = "";
+
+    // S3 Object name
+    @Option(names = {"-k", "--key"}, description = "S3 Object name")
+    private String key = "";
+
+    @Option(names = {"--connection-timeout"}, showDefaultValue= CommandLine.Help.Visibility.ALWAYS, description = "S3 Client connection timeout")
+    private int connectionTimeout = ClientConfiguration.DEFAULT_CONNECTION_TIMEOUT;
+
+    @Option(names = {"--socket-timeout"}, showDefaultValue= CommandLine.Help.Visibility.ALWAYS,  description = "S3 Client socket timeout")
+    private int socketTimeout = ClientConfiguration.DEFAULT_SOCKET_TIMEOUT;
+
+    @Option(names = {"--request-timeout"}, showDefaultValue= CommandLine.Help.Visibility.ALWAYS, description = "S3 Client request timeout")
+    private int requestTimeout = ClientConfiguration.DEFAULT_REQUEST_TIMEOUT;
+
+    @Option(names = {"--execution-timeout"}, showDefaultValue= CommandLine.Help.Visibility.ALWAYS, description = "S3 Client execution timeout")
+    private int executionTimeout = ClientConfiguration.DEFAULT_CLIENT_EXECUTION_TIMEOUT;
+
+    @Option(names = {"--host-style"}, description = "S3 Client host style")
+    private boolean pathStyle = true;
+
+    @Override
+    public Integer call() throws Exception {
         ClientConfiguration cfg = new ClientConfiguration()
                 .withHeader("Close","true")       // disable http keep-alive
                 .withHeader("Connection","close") // disable http keep-alive
-                .withSocketTimeout(1000)
+                .withSocketTimeout(connectionTimeout)
+                .withSocketTimeout(socketTimeout)
+                .withRequestTimeout(requestTimeout)
+                .withClientExecutionTimeout(executionTimeout)
+                .withDisableSocketProxy(true)
                 .withConnectionTimeout(1000);
 
         s3 = AmazonS3ClientBuilder.standard()
                 .withClientConfiguration(cfg)
-                .enablePathStyleAccess()
+                .withPathStyleAccessEnabled(pathStyle)
                 .enablePayloadSigning()
-                .withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration(S3_ENDPOINT, region))
-                .withCredentials(new AWSStaticCredentialsProvider(new BasicAWSCredentials(S3_ACCESS_KEY_ID, S3_SECRET_KEY)))
+                .withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration(endpoint, region))
+                .withCredentials(new AWSStaticCredentialsProvider(new BasicAWSCredentials(accessKey, secretKey)))
                 .build();
-
 
         if (bucket.equals("") && key.equals("")) { // List all my Buckets
             ListMyBuckets();
@@ -80,9 +123,31 @@ public class Main {
             System.out.println("Usage: <bucket> <key>");
         }
 
+        return 0;
     }
 
-    private static void ListMyBuckets() {
+    public static void main(String[] args) {
+        int exitCode = new CommandLine(new Main()).execute(args);
+        System.exit(exitCode);
+    }
+
+    public String bucketName(String value) {
+        int pos = value.lastIndexOf('/');
+        if (pos < 0) {
+            return value;
+        }
+        return value.substring(0, pos);
+    }
+
+    public String keyName(String value) {
+        int pos = value.lastIndexOf('/');
+        if (pos < 0) {
+            return "";
+        }
+        return value.substring(pos + 1);
+    }
+
+    private void ListMyBuckets() {
         List<Bucket> buckets = s3.listBuckets();
         System.out.println("buckets:");
         for (Bucket b : buckets) {
@@ -90,7 +155,7 @@ public class Main {
         }
     }
 
-    private static void ListObjects(String bucket) {
+    private void ListObjects(String bucket) {
         System.out.println("objects:");
         ListObjectsV2Result result = s3.listObjectsV2(bucket);
         List<S3ObjectSummary> objects = result.getObjectSummaries();
@@ -99,8 +164,7 @@ public class Main {
         }
     }
 
-    private static void GetObject(String bucket, String key) {
-        System.out.println("download: "+key);
+    private void GetObject(String bucket, String key) {
         try {
             S3Object o = s3.getObject(bucket, key);
             S3ObjectInputStream s3is = o.getObjectContent();
@@ -112,6 +176,7 @@ public class Main {
             }
             s3is.close();
             fos.close();
+            System.out.println("success download: "+key);
         } catch (AmazonServiceException e) {
             System.err.println(e.getErrorMessage());
             System.exit(1);

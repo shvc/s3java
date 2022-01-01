@@ -1,0 +1,33 @@
+plugins {
+    id 'java'
+}
+
+group 'org.shvc'
+version '1.0'
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+dependencies {
+    implementation group: 'com.amazonaws', name: 'aws-java-sdk-core', version: '1.12.131'
+    implementation group: 'com.amazonaws', name: 'aws-java-sdk-s3', version: '1.12.131'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
+}
+
+//create a fat Jar with all dependencies
+jar {
+    manifest {
+        attributes 'Main-Class': 'org.shvc.s3cli.Main'
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
+
+test {
+    useJUnitPlatform()
+}

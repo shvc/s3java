@@ -12,8 +12,8 @@ java -jar build/libs/s3j-1.0.jar
 
 # Usage
 ```shell
-java -jar build/libs/s3cli-1.0.jar -a root -s ChangeMe -e http://192.168.0.8:9000 -h
-Usage: s3cli [-hV] [--host-style] [-a=<accessKey>]
+java -jar build/libs/s3cli-1.0.jar help   
+Usage: s3cli [-hV] [--path-style] [-a=<accessKey>]
              [--connection-timeout=<connectionTimeout>] [-e=<endpoint>]
              [--execution-timeout=<executionTimeout>] [-r=<region>]
              [--request-timeout=<requestTimeout>] [-s=<secretKey>]
@@ -31,7 +31,8 @@ S3 command line tool
                           S3 Client execution timeout
                             Default: 0
   -h, --help              Show this help message and exit.
-      --host-style        S3 Client host style
+      --path-style        S3 Client path style
+                            Default: true
   -r, --region=<region>   S3 endpoint
                             Default: cn-north-1
       --request-timeout=<requestTimeout>
@@ -44,9 +45,9 @@ S3 command line tool
                             Default: 50000
   -V, --version           Print version information and exit.
 Commands:
-  delete  delete Object
-  get     download Object
-  ls      list Bucket(Objects)
-  put     upload file
-
+  help           Displays help information about the specified command
+  delete, rm     delete Object(s)
+  download, get  download Object
+  list, ls       list Bucket(Objects)
+  upload, put    upload file
 ```

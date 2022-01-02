@@ -28,7 +28,9 @@
 package org.shvc.s3cli;
 
 import com.amazonaws.AmazonServiceException;
+import com.amazonaws.ApacheHttpClientConfig;
 import com.amazonaws.ClientConfiguration;
+import com.amazonaws.SdkClientException;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.client.builder.AwsClientBuilder;
@@ -39,6 +41,7 @@ import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
+import picocli.CommandLine.Spec;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -48,35 +51,30 @@ import java.util.List;
 import java.util.concurrent.Callable;
 
 @Command(name = "s3cli", mixinStandardHelpOptions = true, version = "s3cli 1.0", description = "S3 command line tool")
-public class Main implements Callable<Integer> {
+public class Main implements Runnable {
     public static final String DEFAULT_ENDPOINT = "http://192.168.0.8:9000";
     public static final String DEFAULT_ACCESS_KEY = "root";
     public static final String DEFAULT_SECRET_KEY = "ChangeMe";
 
-    private AmazonS3 s3 = null;
+    @Spec
+    CommandLine.Model.CommandSpec spec;
+
     // S3 endpoint
-    @Option(names = {"-e", "--endpoint"}, defaultValue =DEFAULT_ENDPOINT, description = "S3 endpoint")
+    @Option(names = {"-e", "--endpoint"}, showDefaultValue= CommandLine.Help.Visibility.ALWAYS,  description = "S3 endpoint")
     private String endpoint = DEFAULT_ENDPOINT;
 
     // S3 endpoint
-    @Option(names = {"-r", "--region"}, defaultValue = "cn-north-1", description = "S3 endpoint")
+    @Option(names = {"-r", "--region"}, showDefaultValue= CommandLine.Help.Visibility.ALWAYS,  description = "S3 endpoint")
     private String region = Region.CN_Beijing.toString();
 
     // S3 access key
-    @Option(names = {"-a", "--ak"}, defaultValue = DEFAULT_ACCESS_KEY, description = "S3 access key")
+    @Option(names = {"-a", "--ak"}, showDefaultValue= CommandLine.Help.Visibility.ALWAYS,  description = "S3 access key")
     private String accessKey = DEFAULT_ACCESS_KEY;
 
     // S3 access key
-    @Option(names = {"-s", "--sk"},defaultValue = DEFAULT_SECRET_KEY, description = "S3 secret key")
+    @Option(names = {"-s", "--sk"},showDefaultValue= CommandLine.Help.Visibility.ALWAYS,  description = "S3 secret key")
     private String secretKey = DEFAULT_SECRET_KEY;
 
-    // S3 Bucket name
-    @Option(names = {"-b", "--bucket"}, description = "S3 Bucket name")
-    private String bucket = "";
-
-    // S3 Object name
-    @Option(names = {"-k", "--key"}, description = "S3 Object name")
-    private String key = "";
 
     @Option(names = {"--connection-timeout"}, showDefaultValue= CommandLine.Help.Visibility.ALWAYS, description = "S3 Client connection timeout")
     private int connectionTimeout = ClientConfiguration.DEFAULT_CONNECTION_TIMEOUT;
@@ -93,8 +91,10 @@ public class Main implements Callable<Integer> {
     @Option(names = {"--host-style"}, description = "S3 Client host style")
     private boolean pathStyle = true;
 
-    @Override
-    public Integer call() throws Exception {
+    public Main() {
+    }
+
+    public AmazonS3 s3Client() {
         ClientConfiguration cfg = new ClientConfiguration()
                 .withHeader("Close","true")       // disable http keep-alive
                 .withHeader("Connection","close") // disable http keep-alive
@@ -105,30 +105,28 @@ public class Main implements Callable<Integer> {
                 .withDisableSocketProxy(true)
                 .withConnectionTimeout(1000);
 
-        s3 = AmazonS3ClientBuilder.standard()
+        return AmazonS3ClientBuilder.standard()
                 .withClientConfiguration(cfg)
                 .withPathStyleAccessEnabled(pathStyle)
                 .enablePayloadSigning()
                 .withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration(endpoint, region))
                 .withCredentials(new AWSStaticCredentialsProvider(new BasicAWSCredentials(accessKey, secretKey)))
                 .build();
+    }
 
-        if (bucket.equals("") && key.equals("")) { // List all my Buckets
-            ListMyBuckets();
-        } else if (key.equals("")) { // list Objects
-            ListObjects(bucket);
-        } else if (bucket != "" && key != "") { // Download Object
-            GetObject(bucket, key);
-        } else {
-            System.out.println("Usage: <bucket> <key>");
-        }
-
-        return 0;
+    @Override
+    public void run() {
+        throw new CommandLine.ParameterException(spec.commandLine(), "Specify a subcommand");
     }
 
     public static void main(String[] args) {
-        int exitCode = new CommandLine(new Main()).execute(args);
-        System.exit(exitCode);
+        CommandLine cmd = new CommandLine(new Main());
+        if (args.length == 0) {
+            cmd.usage(System.out);
+        }
+        else {
+            cmd.execute(args);
+        }
     }
 
     public String bucketName(String value) {
@@ -147,25 +145,87 @@ public class Main implements Callable<Integer> {
         return value.substring(pos + 1);
     }
 
+
+    @Command(name = "ls", description = "list Bucket(Objects)")
+    void list(@Parameters(arity = "0..1", paramLabel = "bucket", description = "list Bucket(Objects)") String[] args) {
+        if(args == null) {
+            ListMyBuckets();
+        } else if (args.length == 1){
+            String bucket = bucketName(args[0]);
+            String prefix = keyName(args[0]);
+            ListObjects(bucket, prefix);
+        } else {
+            System.out.println("too many args");
+        }
+    }
+
+    @Command(name = "get", description = "download Object")
+    void get(@Parameters(arity = "1", paramLabel = "<bucket/key>", description = "download Object") String[] args) {
+        String bucket = bucketName(args[0]);
+        String key = keyName(args[0]);
+        GetObject(bucket,key);
+    }
+
+    @Command(name = "delete", description = "delete Object")
+    void delete(@Parameters(arity = "1", paramLabel = "<bucket/key>", description = "delete Object") String[] args) {
+        String bucket = bucketName(args[0]);
+        String key = keyName(args[0]);
+        deleteObject(bucket,key);
+    }
+
+    @Command(name = "put", description = "upload file")
+    void put(@Parameters(arity = "2", paramLabel = "<bucket[/key]> <filename>", description = "upload file") String[] args) {
+        String bucket = bucketName(args[0]);
+        String key = keyName(args[0]);
+        if  (key.equals("")){
+            key = args[1];
+        }
+        putObject(bucket,key,args[1]);
+    }
+
     private void ListMyBuckets() {
+        AmazonS3 s3 = s3Client();
         List<Bucket> buckets = s3.listBuckets();
-        System.out.println("buckets:");
         for (Bucket b : buckets) {
             System.out.println("- "+b.getName());
         }
     }
 
-    private void ListObjects(String bucket) {
-        System.out.println("objects:");
-        ListObjectsV2Result result = s3.listObjectsV2(bucket);
+    private void ListObjects(String bucket, String prefix) {
+        AmazonS3 s3 = s3Client();
+        ListObjectsV2Result result = s3.listObjectsV2(bucket, prefix);
         List<S3ObjectSummary> objects = result.getObjectSummaries();
         for (S3ObjectSummary o : objects) {
             System.out.println("* " + o.getKey());
         }
     }
 
+private void putObject(String bucket, String key, String filename) {
+    try {
+        AmazonS3 s3 = s3Client();
+        // Upload a text string as a new object.
+        //s3.putObject(bucket, key, "Uploaded String Object");
+
+        // Upload a file as a new object with ContentType and title specified.
+        PutObjectRequest request = new PutObjectRequest(bucket, key, new File(filename));
+        ObjectMetadata metadata = new ObjectMetadata();
+        metadata.setContentType("plain/text");
+        metadata.addUserMetadata("title", "someTitle");
+        request.setMetadata(metadata);
+        s3.putObject(request);
+    } catch (AmazonServiceException e) {
+        // The call was transmitted successfully, but Amazon S3 couldn't process
+        // it, so it returned an error response.
+        e.printStackTrace();
+    } catch (SdkClientException e) {
+        // Amazon S3 couldn't be contacted for a response, or the client
+        // couldn't parse the response from Amazon S3.
+        e.printStackTrace();
+    }
+}
     private void GetObject(String bucket, String key) {
         try {
+            AmazonS3 s3 = s3Client();
             S3Object o = s3.getObject(bucket, key);
             S3ObjectInputStream s3is = o.getObjectContent();
             FileOutputStream fos = new FileOutputStream(new File(key));
@@ -185,6 +245,16 @@ public class Main implements Callable<Integer> {
             System.exit(1);
         } catch (IOException e) {
             System.err.println(e.getMessage());
+            System.exit(1);
+        }
+    }
+
+    private void deleteObject(String bucket, String key) {
+        try {
+            AmazonS3 s3 = s3Client();
+            s3.deleteObject(bucket, key);
+        } catch (AmazonServiceException e) {
+            System.err.println(e.getErrorMessage());
             System.exit(1);
         }
     }

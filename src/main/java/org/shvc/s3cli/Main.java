@@ -202,7 +202,7 @@ public class Main implements Runnable {
         String key = keyName(bucketKey);
         for (int i=0; i<files.length; i++) {
             if(i>0){
-                key = files[i];
+                key = "";
             }
             putObject(bucket, key, files[i], contentType);
         }
@@ -225,7 +225,7 @@ public class Main implements Runnable {
 
 private void putObject(String bucket, String key, String filename, String contentType) {
     if  (key.equals("")){
-        key = filename;
+        key = new File(filename).getName();
     }
     try {
         // Upload a file as a new object with ContentType and title specified.

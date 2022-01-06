@@ -112,7 +112,7 @@ public class Main implements Runnable {
 	@Option(names = {"--path-style"}, showDefaultValue = CommandLine.Help.Visibility.ALWAYS, description = "S3 Client path style")
 	private boolean pathStyle = true;
 
-	@Option(names = {"--v2"}, showDefaultValue = CommandLine.Help.Visibility.ALWAYS, description = "S3 Client v2 signer")
+	@Option(names = {"--v2-signer"}, showDefaultValue = CommandLine.Help.Visibility.ALWAYS, description = "S3 Client v2 signer")
 	private boolean signV2 = false;
 
 	@Option(names = {"-H", "--header"}, showDefaultValue = CommandLine.Help.Visibility.ON_DEMAND, arity = "0..*", paramLabel = "Key:Value", description = "S3 Client request header")

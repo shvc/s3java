@@ -112,6 +112,9 @@ public class Main implements Runnable {
 	@Option(names = {"--path-style"}, showDefaultValue = CommandLine.Help.Visibility.ALWAYS, description = "S3 Client path style")
 	private boolean pathStyle = true;
 
+	@Option(names = {"--v2"}, showDefaultValue = CommandLine.Help.Visibility.ALWAYS, description = "S3 Client v2 signer")
+	private boolean signV2 = false;
+
 	@Option(names = {"-H", "--header"}, showDefaultValue = CommandLine.Help.Visibility.ON_DEMAND, arity = "0..*", paramLabel = "Key:Value", description = "S3 Client request header")
 	private String[] headers = null;
 
@@ -178,9 +181,12 @@ public class Main implements Runnable {
 				}
 			}
 		}
-
 		if(maxErrorRetry > 0) {
 			cfg = cfg.withMaxErrorRetry(maxErrorRetry);
+		}
+
+		if(signV2) {
+			cfg.setSignerOverride("S3SignerType");
 		}
 
 		return AmazonS3ClientBuilder.standard()
@@ -210,8 +216,10 @@ public class Main implements Runnable {
 		String bucket = keyInStr(bucketKey, '/');
 		String key = valueInStr(bucketKey, '/');
 		GetObject(bucket, key);
-		for (String k : keys) {
-			GetObject(bucket, k);
+		if(keys != null) {
+			for (String k : keys) {
+				GetObject(bucket, k);
+			}
 		}
 	}
 

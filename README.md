@@ -12,8 +12,8 @@ java -jar build/libs/s3j-1.0.jar
 
 # Usage
 ```shell
-java -jar s3cli-1.0.jar 
-Usage: s3cli [-hV] [--path-style] [--tcp-keep-alive] [-a=<accessKey>]
+java -jar s3cli-1.0.jar                      
+Usage: s3cli [-hV] [--path-style] [--tcp-keep-alive] [--v2] [-a=<accessKey>]
              [--client-execution-timeout=<clientExecutionTimeout>]
              [--connection-max-idle-millis=<connectionMaxIdleMillis>]
              [--connection-timeout=<connectionTimeout>]
@@ -64,6 +64,8 @@ S3 command line tool
       --tcp-keep-alive    S3 Client TCP keep alive
                             Default: false
   -V, --version           Print version information and exit.
+      --v2                S3 Client v2 signer
+                            Default: false
 Commands:
   help           Displays help information about the specified command
   delete, rm     delete Object(s)

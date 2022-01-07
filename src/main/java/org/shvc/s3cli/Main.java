@@ -210,7 +210,20 @@ public class Main implements Runnable {
 		}
 	}
 
-	@Command(name = "download", aliases = {"get"}, description = "download Object")
+	@Command(name = "head",  description = "head Object")
+	void head(@Parameters(arity = "1", index = "0", paramLabel = "<Bucket/Key>", description = "Bucket/Key name") String bucketKey,
+				  @Parameters(arity = "0..*", index = "1+", paramLabel = "Key", description = "other Object(Key) to head") String[] keys) {
+		String bucket = keyInStr(bucketKey, '/');
+		String key = valueInStr(bucketKey, '/');
+		head(bucket, key);
+		if(keys != null) {
+			for (String k : keys) {
+				head(bucket, k);
+			}
+		}
+	}
+
+	@Command(name = "download", aliases = {"get"}, description = "download Object(s)")
 	void download(@Parameters(arity = "1", index = "0", paramLabel = "<Bucket/Key>", description = "Bucket/Key name") String bucketKey,
 				  @Parameters(arity = "0..*", index = "1+", paramLabel = "Key", description = "other Object(Key) to delete") String[] keys) {
 		String bucket = keyInStr(bucketKey, '/');
@@ -234,7 +247,7 @@ public class Main implements Runnable {
 		}
 	}
 
-	@Command(name = "upload", aliases = {"put"}, description = "upload file")
+	@Command(name = "upload", aliases = {"put"}, description = "upload file(s)")
 	void upload(@Option(names = {"--content-type"}, paramLabel = "<Content-Type>", defaultValue = "application/octet-stream") String contentType,
 				@Parameters(arity = "1", index = "0", paramLabel = "<Bucket[/Key]>", description = "Bucket/Key or Bucket/Prefix") String bucketKey,
 				@Parameters(arity = "1..*", index = "1+", paramLabel = "file", description = "locale file(s) to upload") String[] files) {
@@ -281,7 +294,7 @@ public class Main implements Runnable {
 			//metadata.addUserMetadata("title", "someTitle");
 			request.setMetadata(metadata);
 			s3.putObject(request);
-			System.out.println(java.time.Clock.systemUTC().instant()+" upload "+key);
+			System.out.println(java.time.Clock.systemUTC().instant()+" upload "+bucket+"/"+key);
 		} catch (AmazonServiceException e) {
 			// The call was transmitted successfully, but Amazon S3 couldn't process
 			// it, so it returned an error response.
@@ -322,10 +335,28 @@ public class Main implements Runnable {
 	private void deleteObject(String bucket, String key) {
 		try {
 			s3.deleteObject(bucket, key);
+			System.out.println(java.time.Clock.systemUTC().instant()+" delete "+bucket+"/"+key);
 		} catch (AmazonServiceException e) {
 			System.err.println(e.getErrorMessage());
 			System.exit(1);
 		}
+	}
+
+	private boolean head(String bucket, String key) {
+		boolean result = false;
+		try {
+			if(key.equals("")){
+				result = s3.doesBucketExistV2(bucket);
+				System.out.println(java.time.Clock.systemUTC().instant()+" head "+bucket+" "+result);
+			} else {
+				result = s3.doesObjectExist(bucket, key);
+				System.out.println(java.time.Clock.systemUTC().instant() + " head " + bucket + "/" + key+" "+result);
+			}
+		} catch (AmazonServiceException e) {
+			System.err.println(e.getErrorMessage());
+			System.exit(1);
+		}
+		return result;
 	}
 
 }

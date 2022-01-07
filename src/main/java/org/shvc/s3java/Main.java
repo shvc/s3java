@@ -25,7 +25,7 @@
 // snippet-sourcedate:[2018-05-29]
 // snippet-sourceauthor:[AWS]
 // snippet-start:[s3.java.bucket_operations.list_create_delete]
-package org.shvc.s3cli;
+package org.shvc.s3java;
 
 import com.amazonaws.AmazonServiceException;
 import com.amazonaws.ClientConfiguration;
@@ -188,7 +188,6 @@ public class Main implements Runnable {
 		if(signV2) {
 			cfg.setSignerOverride("S3SignerType");
 		}
-
 		return AmazonS3ClientBuilder.standard()
 				.withClientConfiguration(cfg)
 				.withPathStyleAccessEnabled(pathStyle)
@@ -210,7 +209,7 @@ public class Main implements Runnable {
 		}
 	}
 
-	@Command(name = "head",  description = "head Object")
+	@Command(name = "head",  description = "head Bucket(Objects)")
 	void head(@Parameters(arity = "1", index = "0", paramLabel = "<Bucket/Key>", description = "Bucket/Key name") String bucketKey,
 				  @Parameters(arity = "0..*", index = "1+", paramLabel = "Key", description = "other Object(Key) to head") String[] keys) {
 		String bucket = keyInStr(bucketKey, '/');
@@ -342,21 +341,19 @@ public class Main implements Runnable {
 		}
 	}
 
-	private boolean head(String bucket, String key) {
-		boolean result = false;
+	private void head(String bucket, String key) {
 		try {
 			if(key.equals("")){
-				result = s3.doesBucketExistV2(bucket);
+				boolean result = s3.doesBucketExistV2(bucket);
 				System.out.println(java.time.Clock.systemUTC().instant()+" head "+bucket+" "+result);
 			} else {
-				result = s3.doesObjectExist(bucket, key);
+				boolean result = s3.doesObjectExist(bucket, key);
 				System.out.println(java.time.Clock.systemUTC().instant() + " head " + bucket + "/" + key+" "+result);
 			}
 		} catch (AmazonServiceException e) {
 			System.err.println(e.getErrorMessage());
 			System.exit(1);
 		}
-		return result;
 	}
 
 }

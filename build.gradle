@@ -21,7 +21,7 @@ dependencies {
 //create a fat Jar with all dependencies
 jar {
     manifest {
-        attributes 'Main-Class': 'org.shvc.s3cli.Main'
+        attributes 'Main-Class': 'org.shvc.s3java.Main'
     }
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from {

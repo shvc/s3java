@@ -1,5 +1,5 @@
-# s3cli-java
-s3cli
+# s3java
+java s3cli
 
 # Build
 ```shell
@@ -7,13 +7,14 @@ gradle jar
 ```
 # Run
 ```shell
-java -jar build/libs/s3j-1.0.jar 
+java -jar build/libs/s3java-1.0.jar 
 ```
 
 # Usage
 ```shell
-java -jar s3cli-1.0.jar                      
-Usage: s3cli [-hV] [--path-style] [--tcp-keep-alive] [--v2] [-a=<accessKey>]
+java -jar s3java-1.0.jar                       
+Usage: s3cli [-hV] [--path-style] [--tcp-keep-alive] [--v2-signer]
+             [-a=<accessKey>]
              [--client-execution-timeout=<clientExecutionTimeout>]
              [--connection-max-idle-millis=<connectionMaxIdleMillis>]
              [--connection-timeout=<connectionTimeout>]
@@ -69,7 +70,8 @@ S3 command line tool
 Commands:
   help           Displays help information about the specified command
   delete, rm     delete Object(s)
-  download, get  download Object
+  download, get  download Object(s)
+  head           head Bucket(Objects)
   list, ls       list Bucket(Objects)
-  upload, put    upload file
+  upload, put    upload file(s)
 ```

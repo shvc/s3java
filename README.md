@@ -65,7 +65,7 @@ S3 command line tool
       --tcp-keep-alive    S3 Client TCP keep alive
                             Default: false
   -V, --version           Print version information and exit.
-      --v2-signer         S3 Client v2 signer
+      --v2sign            S3 Client v2 sign
                             Default: false
 Commands:
   help           Displays help information about the specified command

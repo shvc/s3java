@@ -13,7 +13,7 @@ java -jar build/libs/s3java-1.0.jar
 # Usage
 ```shell
 java -jar s3java-1.0.jar                       
-Usage: s3cli [-hV] [--path-style] [--tcp-keep-alive] [--v2-signer]
+Usage:       [-hV] [--path-style] [--tcp-keep-alive] [--v2-signer]
              [-a=<accessKey>]
              [--client-execution-timeout=<clientExecutionTimeout>]
              [--connection-max-idle-millis=<connectionMaxIdleMillis>]

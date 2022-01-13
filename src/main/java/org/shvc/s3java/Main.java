@@ -1,30 +1,3 @@
-/**
- * Copyright 2010-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
- * <p>
- * This file is licensed under the Apache License, Version 2.0 (the "License").
- * You may not use this file except in compliance with the License. A copy of
- * the License is located at
- * <p>
- * http://aws.amazon.com/apache2.0/
- * <p>
- * This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
- * CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
- */
-
-// snippet-sourcedescription:[App.java demonstrates how to list, create, and delete a bucket in Amazon S3.]
-// snippet-service:[s3]
-// snippet-keyword:[Java]
-// snippet-sourcesyntax:[java]
-// snippet-keyword:[Amazon S3]
-// snippet-keyword:[Code Sample]
-// snippet-keyword:[listBuckets]
-// snippet-keyword:[createBucket]
-// snippet-keyword:[deleteBucket]
-// snippet-sourcetype:[full-example]
-// snippet-sourcedate:[2018-05-29]
-// snippet-sourceauthor:[AWS]
-// snippet-start:[s3.java.bucket_operations.list_create_delete]
 package org.shvc.s3java;
 
 import com.amazonaws.AmazonServiceException;
@@ -50,9 +23,9 @@ import java.io.IOException;
 import java.util.List;
 
 
-@Command(name = "s3cli",
+@Command(name = "s3java",
 		mixinStandardHelpOptions = true,
-		version = {"s3cli: 1.0", "JVM: ${java.version} (${java.vendor} ${java.vm.name} ${java.vm.version})"},
+		version = {"s3java: 1.0", "JVM: ${java.version} (${java.vendor} ${java.vm.name} ${java.vm.version})"},
 		subcommands = {HelpCommand.class},
 		description = "S3 command line tool")
 public class Main implements Runnable {

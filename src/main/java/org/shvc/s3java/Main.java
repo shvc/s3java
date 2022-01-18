@@ -3,11 +3,14 @@ package org.shvc.s3java;
 import com.amazonaws.AmazonServiceException;
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.SdkClientException;
+import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.AnonymousAWSCredentials;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.client.builder.AwsClientBuilder;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.S3ClientOptions;
 import com.amazonaws.services.s3.model.*;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -16,10 +19,7 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 import picocli.CommandLine.Spec;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.util.List;
 
 
@@ -88,6 +88,9 @@ public class Main implements Runnable {
 	@Option(names = {"--v2sign"}, showDefaultValue = CommandLine.Help.Visibility.ALWAYS, description = "S3 Client signature v2")
 	private boolean signV2 = false;
 
+	@Option(names = {"--chunked-encoding"}, showDefaultValue = CommandLine.Help.Visibility.ALWAYS, description = "S3 Client chunked-encoding")
+	private boolean chunkedEncoding = false;
+
 	@Option(names = {"-H", "--header"}, showDefaultValue = CommandLine.Help.Visibility.ON_DEMAND, arity = "0..*", paramLabel = "Key:Value", description = "S3 Client request header")
 	private String[] headers = null;
 
@@ -145,7 +148,6 @@ public class Main implements Runnable {
 				.withDisableSocketProxy(true);
 		if(headers != null) {
 			for (String h : headers) {
-				// .withHeader("Close","true")       // disable http keep-alive
 				// .withHeader("Connection","close") // disable http keep-alive
 				String hk = keyInStr(h, ':');
 				String hv = valueInStr(h, ':');
@@ -161,12 +163,21 @@ public class Main implements Runnable {
 		if(signV2) {
 			cfg.setSignerOverride("S3SignerType");
 		}
+
+		AWSCredentials cred;
+		if (accessKey.equals("") && secretKey.equals("")) {
+			cred = new AnonymousAWSCredentials();
+		} else {
+			cred = new BasicAWSCredentials(accessKey, secretKey);
+		}
+
 		return AmazonS3ClientBuilder.standard()
 				.withClientConfiguration(cfg)
 				.withPathStyleAccessEnabled(pathStyle)
 				.enablePayloadSigning()
+				.withChunkedEncodingDisabled(chunkedEncoding)
 				.withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration(endpoint, region))
-				.withCredentials(new AWSStaticCredentialsProvider(new BasicAWSCredentials(accessKey, secretKey)))
+				.withCredentials(new AWSStaticCredentialsProvider(cred))
 				.build();
 	}
 
@@ -255,23 +266,25 @@ public class Main implements Runnable {
 	}
 
 	private void putObject(String bucket, String key, String filename, String contentType) {
+		File inputFile = new File(filename);
 		if (key.equals("")) {
-			key = new File(filename).getName();
+			key = inputFile.getName();
 		}
 		try {
-			// Upload a file as a new object with ContentType and title specified.
-			PutObjectRequest request = new PutObjectRequest(bucket, key, new File(filename));
+			FileInputStream inputStream =  new FileInputStream(inputFile);
 			ObjectMetadata metadata = new ObjectMetadata();
 			metadata.setContentType(contentType);
 			//metadata.addUserMetadata("title", "someTitle");
-			request.setMetadata(metadata);
+			//request.setMetadata(metadata);
+			// Upload a file as a new object with ContentType and title specified.
+			PutObjectRequest request = new PutObjectRequest(bucket, key, inputStream, metadata);
 			s3.putObject(request);
 			System.out.println(java.time.Clock.systemUTC().instant()+" upload "+bucket+"/"+key);
 		} catch (AmazonServiceException e) {
 			// The call was transmitted successfully, but Amazon S3 couldn't process
 			// it, so it returned an error response.
 			e.printStackTrace();
-		} catch (SdkClientException e) {
+		} catch (Exception e) {
 			// Amazon S3 couldn't be contacted for a response, or the client
 			// couldn't parse the response from Amazon S3.
 			e.printStackTrace();

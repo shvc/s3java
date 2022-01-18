@@ -151,7 +151,7 @@ public class Main implements Runnable {
 				// .withHeader("Connection","close") // disable http keep-alive
 				String hk = keyInStr(h, ':');
 				String hv = valueInStr(h, ':');
-				if (!hv.equals("")) {
+				if (!hv.equals("") && !hv.equals("")) {
 					cfg = cfg.withHeader(hk, hv);
 				}
 			}
@@ -232,12 +232,13 @@ public class Main implements Runnable {
 
 	@Command(name = "upload", aliases = {"put"}, description = "upload file(s)")
 	void upload(@Option(names = {"--content-type"}, paramLabel = "<Content-Type>", defaultValue = "application/octet-stream") String contentType,
+				@Option(names = {"--metadata"},arity = "1..*", paramLabel = "<Key:Value>") String []metadata,
 				@Parameters(arity = "1", index = "0", paramLabel = "<Bucket[/Key]>", description = "Bucket/Key or Bucket/Prefix") String bucketKey,
 				@Parameters(arity = "1..*", index = "1+", paramLabel = "file", description = "locale file(s) to upload") String[] files) {
 		String bucket = keyInStr(bucketKey, '/');
 		String key = valueInStr(bucketKey, '/');
 		if(files.length == 1) {
-			putObject(bucket, key, files[0], contentType);
+			putObject(bucket, key, files[0], contentType, metadata);
 		} else {
 			// Bucket/Prefix mode
 			for (int i = 0; i < files.length; i++) {
@@ -245,7 +246,7 @@ public class Main implements Runnable {
 				if (!key.equals("")) {
 					newKey = key+newKey;
 				}
-				putObject(bucket, newKey, files[i], contentType);
+				putObject(bucket, newKey, files[i], contentType, metadata);
 			}
 		}
 	}
@@ -265,19 +266,26 @@ public class Main implements Runnable {
 		}
 	}
 
-	private void putObject(String bucket, String key, String filename, String contentType) {
+	private void putObject(String bucket, String key, String filename, String contentType, String[] meta) {
 		File inputFile = new File(filename);
 		if (key.equals("")) {
 			key = inputFile.getName();
 		}
 		try {
-			FileInputStream inputStream =  new FileInputStream(inputFile);
+			// Upload a file as a new object with ContentType and title specified.
+			PutObjectRequest request = new PutObjectRequest(bucket, key, inputFile);
 			ObjectMetadata metadata = new ObjectMetadata();
 			metadata.setContentType(contentType);
-			//metadata.addUserMetadata("title", "someTitle");
-			//request.setMetadata(metadata);
-			// Upload a file as a new object with ContentType and title specified.
-			PutObjectRequest request = new PutObjectRequest(bucket, key, inputStream, metadata);
+			if(meta != null) {
+				for (String m : meta) {
+					String hk = keyInStr(m, ':');
+					String hv = valueInStr(m, ':');
+					if (!hk.equals("") && !hv.equals("")) {
+						metadata.addUserMetadata(hk, hv);
+					}
+				}
+			}
+			request.setMetadata(metadata);
 			s3.putObject(request);
 			System.out.println(java.time.Clock.systemUTC().instant()+" upload "+bucket+"/"+key);
 		} catch (AmazonServiceException e) {

@@ -12,6 +12,10 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.S3ClientOptions;
 import com.amazonaws.services.s3.model.*;
+import com.amazonaws.services.s3.transfer.TransferManager;
+import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
+import com.amazonaws.services.s3.transfer.TransferManagerConfiguration;
+import com.amazonaws.services.s3.transfer.Upload;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.HelpCommand;
@@ -32,6 +36,7 @@ public class Main implements Runnable {
 	public static final String DEFAULT_ENDPOINT = "http://192.168.0.8:9000";
 	public static final String DEFAULT_ACCESS_KEY = "root";
 	public static final String DEFAULT_SECRET_KEY = "ChangeMe";
+	public static final long DEFAULT_PART_SIZE = 5;
 
 	@Spec
 	CommandLine.Model.CommandSpec spec;
@@ -146,7 +151,7 @@ public class Main implements Runnable {
 				.withConnectionMaxIdleMillis(connectionMaxIdleMillis)
 				.withTcpKeepAlive(tcpKeepAlive)
 				.withDisableSocketProxy(true);
-		if(headers != null) {
+		if (headers != null) {
 			for (String h : headers) {
 				// .withHeader("Connection","close") // disable http keep-alive
 				String hk = keyInStr(h, ':');
@@ -156,11 +161,11 @@ public class Main implements Runnable {
 				}
 			}
 		}
-		if(maxErrorRetry > 0) {
+		if (maxErrorRetry > 0) {
 			cfg = cfg.withMaxErrorRetry(maxErrorRetry);
 		}
 
-		if(signV2) {
+		if (signV2) {
 			cfg.setSignerOverride("S3SignerType");
 		}
 
@@ -193,13 +198,13 @@ public class Main implements Runnable {
 		}
 	}
 
-	@Command(name = "head",  description = "head Bucket(Objects)")
+	@Command(name = "head", description = "head Bucket(Objects)")
 	void head(@Parameters(arity = "1", index = "0", paramLabel = "<Bucket/Key>", description = "Bucket/Key name") String bucketKey,
-				  @Parameters(arity = "0..*", index = "1+", paramLabel = "Key", description = "other Object(Key) to head") String[] keys) {
+			  @Parameters(arity = "0..*", index = "1+", paramLabel = "Key", description = "other Object(Key) to head") String[] keys) {
 		String bucket = keyInStr(bucketKey, '/');
 		String key = valueInStr(bucketKey, '/');
 		head(bucket, key);
-		if(keys != null) {
+		if (keys != null) {
 			for (String k : keys) {
 				head(bucket, k);
 			}
@@ -212,7 +217,7 @@ public class Main implements Runnable {
 		String bucket = keyInStr(bucketKey, '/');
 		String key = valueInStr(bucketKey, '/');
 		GetObject(bucket, key);
-		if(keys != null) {
+		if (keys != null) {
 			for (String k : keys) {
 				GetObject(bucket, k);
 			}
@@ -232,23 +237,34 @@ public class Main implements Runnable {
 
 	@Command(name = "upload", aliases = {"put"}, description = "upload file(s)")
 	void upload(@Option(names = {"--content-type"}, paramLabel = "<Content-Type>", defaultValue = "application/octet-stream") String contentType,
-				@Option(names = {"--metadata"},arity = "1..*", paramLabel = "<Key:Value>") String []metadata,
+				@Option(names = {"--metadata"}, arity = "1..*", paramLabel = "<Key:Value>") String[] metadata,
 				@Parameters(arity = "1", index = "0", paramLabel = "<Bucket[/Key]>", description = "Bucket/Key or Bucket/Prefix") String bucketKey,
 				@Parameters(arity = "1..*", index = "1+", paramLabel = "file", description = "locale file(s) to upload") String[] files) {
 		String bucket = keyInStr(bucketKey, '/');
 		String key = valueInStr(bucketKey, '/');
-		if(files.length == 1) {
+		if (files.length == 1) {
 			putObject(bucket, key, files[0], contentType, metadata);
 		} else {
 			// Bucket/Prefix mode
 			for (int i = 0; i < files.length; i++) {
 				String newKey = new File(files[i]).getName();
 				if (!key.equals("")) {
-					newKey = key+newKey;
+					newKey = key + newKey;
 				}
 				putObject(bucket, newKey, files[i], contentType, metadata);
 			}
 		}
+	}
+
+	@Command(name = "mpu", description = "mpu file")
+	void mpu(@Option(names = {"--content-type"}, paramLabel = "<Content-Type>", defaultValue = "application/octet-stream") String contentType,
+			 @Option(names = {"--metadata"}, arity = "1..*", paramLabel = "<Key:Value>") String[] metadata,
+			 @Option(names = {"--part-size"}, arity = "1", paramLabel = "<partSize>", showDefaultValue = CommandLine.Help.Visibility.ALWAYS, defaultValue = "" + DEFAULT_PART_SIZE, description = "partSize in MB") long partSize,
+			 @Parameters(arity = "1", index = "0", paramLabel = "<Bucket[/Key]>", description = "Bucket/Key") String bucketKey,
+			 @Parameters(arity = "1", index = "1", paramLabel = "file", description = "locale file to upload") String filename) {
+		String bucket = keyInStr(bucketKey, '/');
+		String key = valueInStr(bucketKey, '/');
+		mpuObject(bucket, key, filename, contentType, metadata, partSize << 20);
 	}
 
 	private void ListMyBuckets() {
@@ -272,11 +288,10 @@ public class Main implements Runnable {
 			key = inputFile.getName();
 		}
 		try {
-			// Upload a file as a new object with ContentType and title specified.
 			PutObjectRequest request = new PutObjectRequest(bucket, key, inputFile);
 			ObjectMetadata metadata = new ObjectMetadata();
 			metadata.setContentType(contentType);
-			if(meta != null) {
+			if (meta != null) {
 				for (String m : meta) {
 					String hk = keyInStr(m, ':');
 					String hv = valueInStr(m, ':');
@@ -287,14 +302,92 @@ public class Main implements Runnable {
 			}
 			request.setMetadata(metadata);
 			s3.putObject(request);
-			System.out.println(java.time.Clock.systemUTC().instant()+" upload "+bucket+"/"+key);
+			System.out.println(java.time.Clock.systemUTC().instant() + " upload " + bucket + "/" + key);
 		} catch (AmazonServiceException e) {
-			// The call was transmitted successfully, but Amazon S3 couldn't process
-			// it, so it returned an error response.
+			// The call was transmitted successfully, but Amazon S3 couldn't process it, so it returned an error response.
 			e.printStackTrace();
 		} catch (Exception e) {
-			// Amazon S3 couldn't be contacted for a response, or the client
-			// couldn't parse the response from Amazon S3.
+			// Amazon S3 couldn't be contacted for a response, or the client couldn't parse the response from Amazon S3.
+			e.printStackTrace();
+		}
+	}
+
+	private String lastLine = "";
+
+	public void print(String line) {
+		//clear the last line if longer
+		if (lastLine.length() > line.length()) {
+			String temp = "";
+			for (int i = 0; i < lastLine.length(); i++) {
+				temp += " ";
+			}
+			if (temp.length() > 1)
+				System.out.print("\r" + temp);
+		}
+		System.out.print("\r" + line);
+		lastLine = line;
+	}
+
+	private byte anim;
+
+	public void animate(String line) {
+		switch (anim) {
+			case 1:
+				print("[ \\ ] " + line);
+				break;
+			case 2:
+				print("[ | ] " + line);
+				break;
+			case 3:
+				print("[ / ] " + line);
+				break;
+			default:
+				anim = 0;
+				print("[ - ] " + line);
+		}
+		anim++;
+	}
+
+	private void mpuObject(String bucket, String key, String filename, String contentType, String[] meta, long partSize) {
+		File inputFile = new File(filename);
+		if (key.equals("")) {
+			key = inputFile.getName();
+		}
+		try {
+			PutObjectRequest request = new PutObjectRequest(bucket, key, inputFile);
+			ObjectMetadata metadata = new ObjectMetadata();
+			metadata.setContentType(contentType);
+			if (meta != null) {
+				for (String m : meta) {
+					String hk = keyInStr(m, ':');
+					String hv = valueInStr(m, ':');
+					if (!hk.equals("") && !hv.equals("")) {
+						metadata.addUserMetadata(hk, hv);
+					}
+				}
+			}
+			request.setMetadata(metadata);
+
+			TransferManager tm = TransferManagerBuilder.standard()
+					.withMinimumUploadPartSize(partSize)
+					.withS3Client(s3)
+					.build();
+			// TransferManager processes all transfers asynchronously, so this call returns immediately.
+			Upload upload = tm.upload(request);
+
+			// Optionally, wait for the upload to finish before continuing.
+			// upload.waitForCompletion();
+			while (!upload.isDone()) {
+				Thread.sleep(1000);
+				animate(upload.getState().toString() + ": " + (int) upload.getProgress().getPercentTransferred() + "%");
+			}
+			tm.shutdownNow(false);
+			System.out.println("\r" + java.time.Clock.systemUTC().instant() + " upload " + bucket + "/" + key);
+		} catch (AmazonServiceException e) {
+			// The call was transmitted successfully, but Amazon S3 couldn't process it, so it returned an error response.
+			e.printStackTrace();
+		} catch (Exception e) {
+			// Amazon S3 couldn't be contacted for a response, or the client couldn't parse the response from Amazon S3.
 			e.printStackTrace();
 		}
 	}
@@ -312,7 +405,7 @@ public class Main implements Runnable {
 			}
 			s3is.close();
 			fos.close();
-			System.out.println(java.time.Clock.systemUTC().instant()+" download "+filename);
+			System.out.println(java.time.Clock.systemUTC().instant() + " download " + filename);
 		} catch (AmazonServiceException e) {
 			System.err.println(e.getErrorMessage());
 			System.exit(1);
@@ -328,7 +421,7 @@ public class Main implements Runnable {
 	private void deleteObject(String bucket, String key) {
 		try {
 			s3.deleteObject(bucket, key);
-			System.out.println(java.time.Clock.systemUTC().instant()+" delete "+bucket+"/"+key);
+			System.out.println(java.time.Clock.systemUTC().instant() + " delete " + bucket + "/" + key);
 		} catch (AmazonServiceException e) {
 			System.err.println(e.getErrorMessage());
 			System.exit(1);
@@ -337,12 +430,12 @@ public class Main implements Runnable {
 
 	private void head(String bucket, String key) {
 		try {
-			if(key.equals("")){
+			if (key.equals("")) {
 				boolean result = s3.doesBucketExistV2(bucket);
-				System.out.println(java.time.Clock.systemUTC().instant()+" head "+bucket+" "+result);
+				System.out.println(java.time.Clock.systemUTC().instant() + " head " + bucket + " " + result);
 			} else {
 				boolean result = s3.doesObjectExist(bucket, key);
-				System.out.println(java.time.Clock.systemUTC().instant() + " head " + bucket + "/" + key+" "+result);
+				System.out.println(java.time.Clock.systemUTC().instant() + " head " + bucket + "/" + key + " " + result);
 			}
 		} catch (AmazonServiceException e) {
 			System.err.println(e.getErrorMessage());

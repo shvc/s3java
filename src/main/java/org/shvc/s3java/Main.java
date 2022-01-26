@@ -41,7 +41,7 @@ public class Main implements Runnable {
 	@Spec
 	CommandLine.Model.CommandSpec spec;
 
-	AmazonS3 s3 = null;
+	S3Cli cli = null;
 
 	// S3 endpoint
 	@Option(names = {"-e", "--endpoint"}, showDefaultValue = CommandLine.Help.Visibility.ALWAYS, description = "S3 endpoint")
@@ -105,7 +105,7 @@ public class Main implements Runnable {
 	}
 
 	private void init() {
-		s3 = s3Client();
+		cli = new S3Cli(s3Client());
 	}
 
 	@Override
@@ -124,7 +124,7 @@ public class Main implements Runnable {
 		}
 	}
 
-	public String keyInStr(String value, int ch) {
+	private String keyInStr(String value, int ch) {
 		int pos = value.indexOf(ch);
 		if (pos < 0) {
 			return value;
@@ -132,7 +132,7 @@ public class Main implements Runnable {
 		return value.substring(0, pos);
 	}
 
-	public String valueInStr(String value, int ch) {
+	private String valueInStr(String value, int ch) {
 		int pos = value.indexOf(ch);
 		if (pos < 0) {
 			return "";
@@ -190,11 +190,11 @@ public class Main implements Runnable {
 	void list(@Option(names = {"--all"}, description = "list all Objects") boolean all,
 			  @Parameters(arity = "0..1", paramLabel = "Bucket", description = "list Bucket(Objects)") String[] args) {
 		if (args == null) {
-			ListMyBuckets();
+			cli.ListMyBuckets();
 		} else {
 			String bucket = keyInStr(args[0], '/');
 			String prefix = valueInStr(args[0], '/');
-			ListObjects(bucket, prefix, all);
+			cli.ListObjects(bucket, prefix, all);
 		}
 	}
 
@@ -203,10 +203,10 @@ public class Main implements Runnable {
 			  @Parameters(arity = "0..*", index = "1+", paramLabel = "Key", description = "other Object(Key) to head") String[] keys) {
 		String bucket = keyInStr(bucketKey, '/');
 		String key = valueInStr(bucketKey, '/');
-		head(bucket, key);
+		cli.head(bucket, key);
 		if (keys != null) {
 			for (String k : keys) {
-				head(bucket, k);
+				cli.head(bucket, k);
 			}
 		}
 	}
@@ -216,10 +216,10 @@ public class Main implements Runnable {
 				  @Parameters(arity = "0..*", index = "1+", paramLabel = "Key", description = "other Object(Key) to delete") String[] keys) {
 		String bucket = keyInStr(bucketKey, '/');
 		String key = valueInStr(bucketKey, '/');
-		GetObject(bucket, key);
+		cli.GetObject(bucket, key);
 		if (keys != null) {
 			for (String k : keys) {
-				GetObject(bucket, k);
+				cli.GetObject(bucket, k);
 			}
 		}
 	}
@@ -229,9 +229,9 @@ public class Main implements Runnable {
 				@Parameters(arity = "0..*", index = "1+", paramLabel = "Key", description = "other Object(Key) to delete") String[] keys) {
 		String bucket = keyInStr(bucketKey, '/');
 		String key = valueInStr(bucketKey, '/');
-		deleteObject(bucket, key);
+		cli.deleteObject(bucket, key);
 		for (String k : keys) {
-			deleteObject(bucket, k);
+			cli.deleteObject(bucket, k);
 		}
 	}
 
@@ -243,7 +243,7 @@ public class Main implements Runnable {
 		String bucket = keyInStr(bucketKey, '/');
 		String key = valueInStr(bucketKey, '/');
 		if (files.length == 1) {
-			putObject(bucket, key, files[0], contentType, metadata);
+			cli.putObject(bucket, key, files[0], contentType, metadata);
 		} else {
 			// Bucket/Prefix mode
 			for (int i = 0; i < files.length; i++) {
@@ -251,7 +251,7 @@ public class Main implements Runnable {
 				if (!key.equals("")) {
 					newKey = key + newKey;
 				}
-				putObject(bucket, newKey, files[i], contentType, metadata);
+				cli.putObject(bucket, newKey, files[i], contentType, metadata);
 			}
 		}
 	}
@@ -264,183 +264,7 @@ public class Main implements Runnable {
 			 @Parameters(arity = "1", index = "1", paramLabel = "file", description = "locale file to upload") String filename) {
 		String bucket = keyInStr(bucketKey, '/');
 		String key = valueInStr(bucketKey, '/');
-		mpuObject(bucket, key, filename, contentType, metadata, partSize << 20);
-	}
-
-	private void ListMyBuckets() {
-		List<Bucket> buckets = s3.listBuckets();
-		for (Bucket b : buckets) {
-			System.out.println("- " + b.getName());
-		}
-	}
-
-	private void ListObjects(String bucket, String prefix, boolean all) {
-		ListObjectsV2Result result = s3.listObjectsV2(bucket, prefix);
-		List<S3ObjectSummary> objects = result.getObjectSummaries();
-		for (S3ObjectSummary o : objects) {
-			System.out.println("* " + o.getKey());
-		}
-	}
-
-	private void putObject(String bucket, String key, String filename, String contentType, String[] meta) {
-		File inputFile = new File(filename);
-		if (key.equals("")) {
-			key = inputFile.getName();
-		}
-		try {
-			PutObjectRequest request = new PutObjectRequest(bucket, key, inputFile);
-			ObjectMetadata metadata = new ObjectMetadata();
-			metadata.setContentType(contentType);
-			if (meta != null) {
-				for (String m : meta) {
-					String hk = keyInStr(m, ':');
-					String hv = valueInStr(m, ':');
-					if (!hk.equals("") && !hv.equals("")) {
-						metadata.addUserMetadata(hk, hv);
-					}
-				}
-			}
-			request.setMetadata(metadata);
-			s3.putObject(request);
-			System.out.println(java.time.Clock.systemUTC().instant() + " upload " + bucket + "/" + key);
-		} catch (AmazonServiceException e) {
-			// The call was transmitted successfully, but Amazon S3 couldn't process it, so it returned an error response.
-			e.printStackTrace();
-		} catch (Exception e) {
-			// Amazon S3 couldn't be contacted for a response, or the client couldn't parse the response from Amazon S3.
-			e.printStackTrace();
-		}
-	}
-
-	private String lastLine = "";
-
-	public void print(String line) {
-		//clear the last line if longer
-		if (lastLine.length() > line.length()) {
-			String temp = "";
-			for (int i = 0; i < lastLine.length(); i++) {
-				temp += " ";
-			}
-			if (temp.length() > 1)
-				System.out.print("\r" + temp);
-		}
-		System.out.print("\r" + line);
-		lastLine = line;
-	}
-
-	private byte anim;
-
-	public void animate(String line) {
-		switch (anim) {
-			case 1:
-				print("[ \\ ] " + line);
-				break;
-			case 2:
-				print("[ | ] " + line);
-				break;
-			case 3:
-				print("[ / ] " + line);
-				break;
-			default:
-				anim = 0;
-				print("[ - ] " + line);
-		}
-		anim++;
-	}
-
-	private void mpuObject(String bucket, String key, String filename, String contentType, String[] meta, long partSize) {
-		File inputFile = new File(filename);
-		if (key.equals("")) {
-			key = inputFile.getName();
-		}
-		try {
-			PutObjectRequest request = new PutObjectRequest(bucket, key, inputFile);
-			ObjectMetadata metadata = new ObjectMetadata();
-			metadata.setContentType(contentType);
-			if (meta != null) {
-				for (String m : meta) {
-					String hk = keyInStr(m, ':');
-					String hv = valueInStr(m, ':');
-					if (!hk.equals("") && !hv.equals("")) {
-						metadata.addUserMetadata(hk, hv);
-					}
-				}
-			}
-			request.setMetadata(metadata);
-
-			TransferManager tm = TransferManagerBuilder.standard()
-					.withMinimumUploadPartSize(partSize)
-					.withS3Client(s3)
-					.build();
-			// TransferManager processes all transfers asynchronously, so this call returns immediately.
-			Upload upload = tm.upload(request);
-
-			// Optionally, wait for the upload to finish before continuing.
-			// upload.waitForCompletion();
-			while (!upload.isDone()) {
-				Thread.sleep(1000);
-				animate(upload.getState().toString() + ": " + (int) upload.getProgress().getPercentTransferred() + "%");
-			}
-			tm.shutdownNow(false);
-			System.out.println("\r" + java.time.Clock.systemUTC().instant() + " upload " + bucket + "/" + key);
-		} catch (AmazonServiceException e) {
-			// The call was transmitted successfully, but Amazon S3 couldn't process it, so it returned an error response.
-			e.printStackTrace();
-		} catch (Exception e) {
-			// Amazon S3 couldn't be contacted for a response, or the client couldn't parse the response from Amazon S3.
-			e.printStackTrace();
-		}
-	}
-
-	private void GetObject(String bucket, String key) {
-		try {
-			String filename = new File(key).getName();
-			S3Object o = s3.getObject(bucket, key);
-			S3ObjectInputStream s3is = o.getObjectContent();
-			FileOutputStream fos = new FileOutputStream(filename);
-			byte[] buf = new byte[4096];
-			int length = 0;
-			while ((length = s3is.read(buf)) > 0) {
-				fos.write(buf, 0, length);
-			}
-			s3is.close();
-			fos.close();
-			System.out.println(java.time.Clock.systemUTC().instant() + " download " + filename);
-		} catch (AmazonServiceException e) {
-			System.err.println(e.getErrorMessage());
-			System.exit(1);
-		} catch (FileNotFoundException e) {
-			System.err.println(e.getMessage());
-			System.exit(1);
-		} catch (IOException e) {
-			System.err.println(e.getMessage());
-			System.exit(1);
-		}
-	}
-
-	private void deleteObject(String bucket, String key) {
-		try {
-			s3.deleteObject(bucket, key);
-			System.out.println(java.time.Clock.systemUTC().instant() + " delete " + bucket + "/" + key);
-		} catch (AmazonServiceException e) {
-			System.err.println(e.getErrorMessage());
-			System.exit(1);
-		}
-	}
-
-	private void head(String bucket, String key) {
-		try {
-			if (key.equals("")) {
-				boolean result = s3.doesBucketExistV2(bucket);
-				System.out.println(java.time.Clock.systemUTC().instant() + " head " + bucket + " " + result);
-			} else {
-				boolean result = s3.doesObjectExist(bucket, key);
-				System.out.println(java.time.Clock.systemUTC().instant() + " head " + bucket + "/" + key + " " + result);
-			}
-		} catch (AmazonServiceException e) {
-			System.err.println(e.getErrorMessage());
-			System.exit(1);
-		}
+		cli.mpuObject(bucket, key, filename, contentType, metadata, partSize << 20);
 	}
 
 }

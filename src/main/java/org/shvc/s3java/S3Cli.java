@@ -17,7 +17,6 @@ import com.amazonaws.services.s3.transfer.Upload;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -66,17 +65,17 @@ public class S3Cli {
 				.build();
 		S3Cli cli = new S3Cli(s3);
 
-		cli.ListMyBuckets();
+		cli.listMyBuckets();
 	}
 
-	public void ListMyBuckets() {
+	public void listMyBuckets() {
 		List<Bucket> buckets = s3.listBuckets();
 		for (Bucket b : buckets) {
 			System.out.println("- " + b.getName());
 		}
 	}
 
-	public void ListObjects(String bucket, String prefix, boolean all) {
+	public void listObjects(String bucket, String prefix, boolean all) {
 		ListObjectsV2Result result = s3.listObjectsV2(bucket, prefix);
 		List<S3ObjectSummary> objects = result.getObjectSummaries();
 		for (S3ObjectSummary o : objects) {
@@ -192,7 +191,7 @@ public class S3Cli {
 		}
 	}
 
-	public void GetObject(String bucket, String key) {
+	public void getObject(String bucket, String key) {
 		try {
 			String filename = new File(key).getName();
 			S3Object o = s3.getObject(bucket, key);
@@ -212,7 +211,7 @@ public class S3Cli {
 		} catch (FileNotFoundException e) {
 			System.err.println(e.getMessage());
 			System.exit(1);
-		} catch (IOException e) {
+		} catch (Exception e) {
 			System.err.println(e.getMessage());
 			System.exit(1);
 		}

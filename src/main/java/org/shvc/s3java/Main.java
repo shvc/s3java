@@ -13,9 +13,7 @@ import picocli.CommandLine;
 import picocli.CommandLine.*;
 
 import java.io.File;
-import java.util.HashMap;
 import java.util.Map;
-
 
 @Command(name = "s3java",
 		mixinStandardHelpOptions = true,
@@ -33,19 +31,15 @@ public class Main implements Runnable {
 
 	S3Cli cli = null;
 
-	// S3 endpoint
 	@Option(names = {"-e", "--endpoint"}, showDefaultValue = CommandLine.Help.Visibility.ALWAYS, description = "S3 endpoint")
 	private String endpoint = DEFAULT_ENDPOINT;
 
-	// S3 endpoint
 	@Option(names = {"-r", "--region"}, showDefaultValue = CommandLine.Help.Visibility.ALWAYS, description = "S3 endpoint")
 	private String region = Region.CN_Beijing.toString();
 
-	// S3 access key
 	@Option(names = {"-a", "--ak"}, showDefaultValue = CommandLine.Help.Visibility.ALWAYS, description = "S3 access key")
 	private String accessKey = DEFAULT_ACCESS_KEY;
 
-	// S3 access key
 	@Option(names = {"-s", "--sk"}, showDefaultValue = CommandLine.Help.Visibility.ALWAYS, description = "S3 secret key")
 	private String secretKey = DEFAULT_SECRET_KEY;
 
@@ -75,7 +69,6 @@ public class Main implements Runnable {
 
 	@Option(names = {"--tcp-keep-alive"}, showDefaultValue = CommandLine.Help.Visibility.ALWAYS, description = "S3 Client TCP keep alive")
 	private boolean tcpKeepAlive = ClientConfiguration.DEFAULT_TCP_KEEP_ALIVE;
-	;
 
 	@Option(names = {"--path-style"}, showDefaultValue = CommandLine.Help.Visibility.ALWAYS, description = "S3 Client path style")
 	private boolean pathStyle = true;
@@ -141,11 +134,11 @@ public class Main implements Runnable {
 				.withConnectionMaxIdleMillis(connectionMaxIdleMillis)
 				.withTcpKeepAlive(tcpKeepAlive)
 				.withDisableSocketProxy(true);
-		
+
 		if (header != null) {
 			for (String hk : header.keySet()) {
 				String hv = header.get(hk);
-				if (!hv.equals("") && !hv.equals("")) {
+				if (!hk.equals("") && !hv.equals("")) {
 					cfg = cfg.withHeader(hk, hv);
 				}
 			}
@@ -180,11 +173,11 @@ public class Main implements Runnable {
 	void list(@Option(names = {"--all"}, description = "list all Objects") boolean all,
 			  @Parameters(arity = "0..1", paramLabel = "Bucket", description = "list Bucket(Objects)") String[] args) {
 		if (args == null) {
-			cli.ListMyBuckets();
+			cli.listMyBuckets();
 		} else {
 			String bucket = keyInStr(args[0], '/');
 			String prefix = valueInStr(args[0], '/');
-			cli.ListObjects(bucket, prefix, all);
+			cli.listObjects(bucket, prefix, all);
 		}
 	}
 
@@ -206,10 +199,10 @@ public class Main implements Runnable {
 				  @Parameters(arity = "0..*", index = "1+", paramLabel = "Key", description = "other Object(Key) to delete") String[] keys) {
 		String bucket = keyInStr(bucketKey, '/');
 		String key = valueInStr(bucketKey, '/');
-		cli.GetObject(bucket, key);
+		cli.getObject(bucket, key);
 		if (keys != null) {
 			for (String k : keys) {
-				cli.GetObject(bucket, k);
+				cli.getObject(bucket, k);
 			}
 		}
 	}
@@ -236,12 +229,12 @@ public class Main implements Runnable {
 			cli.putObject(bucket, key, files[0], contentType, metadata);
 		} else {
 			// Bucket/Prefix mode
-			for (int i = 0; i < files.length; i++) {
-				String newKey = new File(files[i]).getName();
+			for (String file : files) {
+				String newKey = new File(file).getName();
 				if (!key.equals("")) {
 					newKey = key + newKey;
 				}
-				cli.putObject(bucket, newKey, files[i], contentType, metadata);
+				cli.putObject(bucket, newKey, file, contentType, metadata);
 			}
 		}
 	}

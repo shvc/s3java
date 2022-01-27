@@ -1,8 +1,6 @@
 package org.shvc.s3java;
 
-import com.amazonaws.AmazonServiceException;
 import com.amazonaws.ClientConfiguration;
-import com.amazonaws.SdkClientException;
 import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.AnonymousAWSCredentials;
@@ -10,21 +8,13 @@ import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.client.builder.AwsClientBuilder;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import com.amazonaws.services.s3.S3ClientOptions;
-import com.amazonaws.services.s3.model.*;
-import com.amazonaws.services.s3.transfer.TransferManager;
-import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
-import com.amazonaws.services.s3.transfer.TransferManagerConfiguration;
-import com.amazonaws.services.s3.transfer.Upload;
+import com.amazonaws.services.s3.model.Region;
 import picocli.CommandLine;
-import picocli.CommandLine.Command;
-import picocli.CommandLine.HelpCommand;
-import picocli.CommandLine.Option;
-import picocli.CommandLine.Parameters;
-import picocli.CommandLine.Spec;
+import picocli.CommandLine.*;
 
-import java.io.*;
-import java.util.List;
+import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 
 
 @Command(name = "s3java",
@@ -96,8 +86,8 @@ public class Main implements Runnable {
 	@Option(names = {"--chunked-encoding"}, showDefaultValue = CommandLine.Help.Visibility.ALWAYS, description = "S3 Client chunked-encoding")
 	private boolean chunkedEncoding = false;
 
-	@Option(names = {"-H", "--header"}, showDefaultValue = CommandLine.Help.Visibility.ON_DEMAND, arity = "0..*", paramLabel = "Key:Value", description = "S3 Client request header")
-	private String[] headers = null;
+	@Option(names = {"-H", "--header"}, showDefaultValue = CommandLine.Help.Visibility.ON_DEMAND, arity = "0..*", paramLabel = "Key=Value", description = "S3 Client request header")
+	private Map<String, String> header;
 
 	private int executionStrategy(CommandLine.ParseResult parseResult) {
 		init(); // custom initialization to be done before executing any command or subcommand
@@ -151,16 +141,16 @@ public class Main implements Runnable {
 				.withConnectionMaxIdleMillis(connectionMaxIdleMillis)
 				.withTcpKeepAlive(tcpKeepAlive)
 				.withDisableSocketProxy(true);
-		if (headers != null) {
-			for (String h : headers) {
-				// .withHeader("Connection","close") // disable http keep-alive
-				String hk = keyInStr(h, ':');
-				String hv = valueInStr(h, ':');
+		
+		if (header != null) {
+			for (String hk : header.keySet()) {
+				String hv = header.get(hk);
 				if (!hv.equals("") && !hv.equals("")) {
 					cfg = cfg.withHeader(hk, hv);
 				}
 			}
 		}
+
 		if (maxErrorRetry > 0) {
 			cfg = cfg.withMaxErrorRetry(maxErrorRetry);
 		}
@@ -237,7 +227,7 @@ public class Main implements Runnable {
 
 	@Command(name = "upload", aliases = {"put"}, description = "upload file(s)")
 	void upload(@Option(names = {"--content-type"}, paramLabel = "<Content-Type>", defaultValue = "application/octet-stream") String contentType,
-				@Option(names = {"--metadata"}, arity = "1..*", paramLabel = "<Key:Value>") String[] metadata,
+				@Option(names = {"--metadata", "--md"}, arity = "1..*", paramLabel = "<Key=Value>") Map<String, String> metadata,
 				@Parameters(arity = "1", index = "0", paramLabel = "<Bucket[/Key]>", description = "Bucket/Key or Bucket/Prefix") String bucketKey,
 				@Parameters(arity = "1..*", index = "1+", paramLabel = "file", description = "locale file(s) to upload") String[] files) {
 		String bucket = keyInStr(bucketKey, '/');
@@ -258,7 +248,7 @@ public class Main implements Runnable {
 
 	@Command(name = "mpu", description = "mpu file")
 	void mpu(@Option(names = {"--content-type"}, paramLabel = "<Content-Type>", defaultValue = "application/octet-stream") String contentType,
-			 @Option(names = {"--metadata"}, arity = "1..*", paramLabel = "<Key:Value>") String[] metadata,
+			 @Option(names = {"--metadata", "--md"}, arity = "1..*", paramLabel = "<Key=Value>") Map<String, String> metadata,
 			 @Option(names = {"--part-size"}, arity = "1", paramLabel = "<partSize>", showDefaultValue = CommandLine.Help.Visibility.ALWAYS, defaultValue = "" + DEFAULT_PART_SIZE, description = "partSize in MB") long partSize,
 			 @Parameters(arity = "1", index = "0", paramLabel = "<Bucket[/Key]>", description = "Bucket/Key") String bucketKey,
 			 @Parameters(arity = "1", index = "1", paramLabel = "file", description = "locale file to upload") String filename) {

@@ -19,22 +19,24 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 public class S3Cli {
 	private AmazonS3 s3;
-	public S3Cli(AmazonS3 s3){
+
+	public S3Cli(AmazonS3 s3) {
 		this.s3 = s3;
 	}
 
 	public static void main(String[] args) {
 		ClientConfiguration cfg = new ClientConfiguration()
-				.withConnectionTimeout(10*1000)
-				.withSocketTimeout(10*1000)
-				.withRequestTimeout(10*1000)
-				.withClientExecutionTimeout(10*1000)
+				.withConnectionTimeout(10 * 1000)
+				.withSocketTimeout(10 * 1000)
+				.withRequestTimeout(10 * 1000)
+				.withClientExecutionTimeout(10 * 1000)
 				.withMaxConnections(1000)
-				.withConnectionTTL(10*1000)
-				.withConnectionMaxIdleMillis(10*1000)
+				.withConnectionTTL(10 * 1000)
+				.withConnectionMaxIdleMillis(10 * 1000)
 				.withTcpKeepAlive(false)
 				.withDisableSocketProxy(true);
 
@@ -67,22 +69,6 @@ public class S3Cli {
 		cli.ListMyBuckets();
 	}
 
-	private String keyInStr(String value, int ch) {
-		int pos = value.indexOf(ch);
-		if (pos < 0) {
-			return value;
-		}
-		return value.substring(0, pos);
-	}
-
-	private String valueInStr(String value, int ch) {
-		int pos = value.indexOf(ch);
-		if (pos < 0) {
-			return "";
-		}
-		return value.substring(pos + 1);
-	}
-
 	public void ListMyBuckets() {
 		List<Bucket> buckets = s3.listBuckets();
 		for (Bucket b : buckets) {
@@ -98,25 +84,24 @@ public class S3Cli {
 		}
 	}
 
-	public void putObject(String bucket, String key, String filename, String contentType, String[] meta) {
+	public void putObject(String bucket, String key, String filename, String contentType, Map<String, String> metadata) {
 		File inputFile = new File(filename);
 		if (key.equals("")) {
 			key = inputFile.getName();
 		}
 		try {
 			PutObjectRequest request = new PutObjectRequest(bucket, key, inputFile);
-			ObjectMetadata metadata = new ObjectMetadata();
-			metadata.setContentType(contentType);
-			if (meta != null) {
-				for (String m : meta) {
-					String hk = keyInStr(m, ':');
-					String hv = valueInStr(m, ':');
+			ObjectMetadata objMetadata = new ObjectMetadata();
+			objMetadata.setContentType(contentType);
+			if (metadata != null) {
+				for (String hk : metadata.keySet()) {
+					String hv = metadata.get(hk);
 					if (!hk.equals("") && !hv.equals("")) {
-						metadata.addUserMetadata(hk, hv);
+						objMetadata.addUserMetadata(hk, hv);
 					}
 				}
 			}
-			request.setMetadata(metadata);
+			request.setMetadata(objMetadata);
 			s3.putObject(request);
 			System.out.println(java.time.Clock.systemUTC().instant() + " upload " + bucket + "/" + key);
 		} catch (AmazonServiceException e) {
@@ -129,6 +114,7 @@ public class S3Cli {
 	}
 
 	private String lastLine = "";
+
 	private void print(String line) {
 		//clear the last line if longer
 		if (lastLine.length() > line.length()) {
@@ -144,6 +130,7 @@ public class S3Cli {
 	}
 
 	private byte anim;
+
 	private void animate(String line) {
 		switch (anim) {
 			case 1:
@@ -162,25 +149,24 @@ public class S3Cli {
 		anim++;
 	}
 
-	public void mpuObject(String bucket, String key, String filename, String contentType, String[] meta, long partSize) {
+	public void mpuObject(String bucket, String key, String filename, String contentType, Map<String, String> metadata, long partSize) {
 		File inputFile = new File(filename);
 		if (key.equals("")) {
 			key = inputFile.getName();
 		}
 		try {
 			PutObjectRequest request = new PutObjectRequest(bucket, key, inputFile);
-			ObjectMetadata metadata = new ObjectMetadata();
-			metadata.setContentType(contentType);
-			if (meta != null) {
-				for (String m : meta) {
-					String hk = keyInStr(m, ':');
-					String hv = valueInStr(m, ':');
+			ObjectMetadata objectMetadata = new ObjectMetadata();
+			objectMetadata.setContentType(contentType);
+			if (metadata != null) {
+				for (String hk : metadata.keySet()) {
+					String hv = metadata.get(hk);
 					if (!hk.equals("") && !hv.equals("")) {
-						metadata.addUserMetadata(hk, hv);
+						objectMetadata.addUserMetadata(hk, hv);
 					}
 				}
 			}
-			request.setMetadata(metadata);
+			request.setMetadata(objectMetadata);
 
 			TransferManager tm = TransferManagerBuilder.standard()
 					.withMinimumUploadPartSize(partSize)

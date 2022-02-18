@@ -97,6 +97,7 @@ public class Main implements Runnable {
 	}
 
 	public static void main(String[] args) {
+		System.setProperty("org.apache.commons.logging.Log", "org.apache.commons.logging.impl.NoOpLog");
 		System.setProperty("com.amazonaws.sdk.disableCertChecking", "true");
 		Main app = new Main();
 		CommandLine cmd = new CommandLine(app).setExecutionStrategy(app::executionStrategy);

@@ -97,6 +97,7 @@ public class Main implements Runnable {
 	}
 
 	public static void main(String[] args) {
+		System.setProperty("com.amazonaws.sdk.disableCertChecking", "true");
 		Main app = new Main();
 		CommandLine cmd = new CommandLine(app).setExecutionStrategy(app::executionStrategy);
 
@@ -122,6 +123,7 @@ public class Main implements Runnable {
 		}
 		return value.substring(pos + 1);
 	}
+
 
 	public AmazonS3 s3Client() {
 		ClientConfiguration cfg = new ClientConfiguration()

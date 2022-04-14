@@ -172,6 +172,18 @@ public class Main implements Runnable {
 				.build();
 	}
 
+	@Command(name = "list-v2", aliases = {"ls-v2"}, description = "list Bucket(Objects V2)")
+	void listV2(@Option(names = {"--all"}, description = "list all Objects") boolean all,
+			  @Parameters(arity = "0..1", paramLabel = "Bucket", description = "list Bucket(Objects V2)") String[] args) {
+		if (args == null) {
+			cli.listMyBuckets();
+		} else {
+			String bucket = keyInStr(args[0], '/');
+			String prefix = valueInStr(args[0], '/');
+			cli.listObjectsV2(bucket, prefix, all);
+		}
+	}
+
 	@Command(name = "list", aliases = {"ls"}, description = "list Bucket(Objects)")
 	void list(@Option(names = {"--all"}, description = "list all Objects") boolean all,
 			  @Parameters(arity = "0..1", paramLabel = "Bucket", description = "list Bucket(Objects)") String[] args) {

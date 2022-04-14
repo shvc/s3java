@@ -75,8 +75,16 @@ public class S3Cli {
 		}
 	}
 
-	public void listObjects(String bucket, String prefix, boolean all) {
+	public void listObjectsV2(String bucket, String prefix, boolean all) {
 		ListObjectsV2Result result = s3.listObjectsV2(bucket, prefix);
+		List<S3ObjectSummary> objects = result.getObjectSummaries();
+		for (S3ObjectSummary o : objects) {
+			System.out.println("* " + o.getKey());
+		}
+	}
+
+	public void listObjects(String bucket, String prefix, boolean all) {
+		ObjectListing result = s3.listObjects(bucket, prefix);
 		List<S3ObjectSummary> objects = result.getObjectSummaries();
 		for (S3ObjectSummary o : objects) {
 			System.out.println("* " + o.getKey());

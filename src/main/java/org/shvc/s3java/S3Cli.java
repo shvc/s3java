@@ -2,6 +2,7 @@ package org.shvc.s3java;
 
 import com.amazonaws.AmazonServiceException;
 import com.amazonaws.ClientConfiguration;
+import com.amazonaws.HttpMethod;
 import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.AnonymousAWSCredentials;
@@ -19,12 +20,23 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.util.List;
 import java.util.Map;
+import java.net.URL;
+import java.time.Instant;
 
 public class S3Cli {
 	private AmazonS3 s3;
+	private  boolean presign;
+	private long expire;
 
 	public S3Cli(AmazonS3 s3) {
 		this.s3 = s3;
+		this.presign = false;
+	}
+
+	public S3Cli(AmazonS3 s3, boolean presign, long exp) {
+		this.s3 = s3;
+		this.presign = presign;
+		this.expire = exp;
 	}
 
 	public static void main(String[] args) {
@@ -46,7 +58,6 @@ public class S3Cli {
 		String region = "";
 		String accessKey = "root";
 		String secretKey = "ChangeMe";
-
 
 		AWSCredentials cred;
 		if (accessKey.equals("") && secretKey.equals("")) {
@@ -91,13 +102,24 @@ public class S3Cli {
 		}
 	}
 
-	public void putObject(String bucket, String key, String filename, String contentType, Map<String, String> metadata) {
+	public void putObject(String bucketName, String key, String filename, String contentType,
+			Map<String, String> metadata) {
 		File inputFile = new File(filename);
 		if (key.equals("")) {
 			key = inputFile.getName();
 		}
 		try {
-			PutObjectRequest request = new PutObjectRequest(bucket, key, inputFile);
+			if (this.presign) {
+				// Set the presigned URL
+				java.util.Date expiration = new java.util.Date();
+				long expTimeMillis = Instant.now().toEpochMilli();
+				expTimeMillis += this.expire *60 *1000;
+				expiration.setTime(expTimeMillis);
+				URL url = s3.generatePresignedUrl(bucketName, key, expiration, HttpMethod.PUT);
+				System.out.println(url.toString());
+				return;
+			}
+			PutObjectRequest request = new PutObjectRequest(bucketName, key, inputFile);
 			ObjectMetadata objMetadata = new ObjectMetadata();
 			objMetadata.setContentType(contentType);
 			if (metadata != null) {
@@ -110,12 +132,14 @@ public class S3Cli {
 			}
 			request.setMetadata(objMetadata);
 			s3.putObject(request);
-			System.out.println(java.time.Clock.systemUTC().instant() + " upload " + bucket + "/" + key);
+			System.out.println(java.time.Clock.systemUTC().instant() + " upload " + bucketName + "/" + key);
 		} catch (AmazonServiceException e) {
-			// The call was transmitted successfully, but Amazon S3 couldn't process it, so it returned an error response.
+			// The call was transmitted successfully, but Amazon S3 couldn't process it, so
+			// it returned an error response.
 			e.printStackTrace();
 		} catch (Exception e) {
-			// Amazon S3 couldn't be contacted for a response, or the client couldn't parse the response from Amazon S3.
+			// Amazon S3 couldn't be contacted for a response, or the client couldn't parse
+			// the response from Amazon S3.
 			e.printStackTrace();
 		}
 	}
@@ -123,7 +147,7 @@ public class S3Cli {
 	private String lastLine = "";
 
 	private void print(String line) {
-		//clear the last line if longer
+		// clear the last line if longer
 		if (lastLine.length() > line.length()) {
 			String temp = "";
 			for (int i = 0; i < lastLine.length(); i++) {
@@ -156,7 +180,8 @@ public class S3Cli {
 		anim++;
 	}
 
-	public void mpuObject(String bucket, String key, String filename, String contentType, Map<String, String> metadata, long partSize) {
+	public void mpuObject(String bucket, String key, String filename, String contentType, Map<String, String> metadata,
+			long partSize) {
 		File inputFile = new File(filename);
 		if (key.equals("")) {
 			key = inputFile.getName();
@@ -179,7 +204,8 @@ public class S3Cli {
 					.withMinimumUploadPartSize(partSize)
 					.withS3Client(s3)
 					.build();
-			// TransferManager processes all transfers asynchronously, so this call returns immediately.
+			// TransferManager processes all transfers asynchronously, so this call returns
+			// immediately.
 			Upload upload = tm.upload(request);
 
 			// Optionally, wait for the upload to finish before continuing.
@@ -191,18 +217,20 @@ public class S3Cli {
 			tm.shutdownNow(false);
 			System.out.println("\r" + java.time.Clock.systemUTC().instant() + " upload " + bucket + "/" + key);
 		} catch (AmazonServiceException e) {
-			// The call was transmitted successfully, but Amazon S3 couldn't process it, so it returned an error response.
+			// The call was transmitted successfully, but Amazon S3 couldn't process it, so
+			// it returned an error response.
 			e.printStackTrace();
 		} catch (Exception e) {
-			// Amazon S3 couldn't be contacted for a response, or the client couldn't parse the response from Amazon S3.
+			// Amazon S3 couldn't be contacted for a response, or the client couldn't parse
+			// the response from Amazon S3.
 			e.printStackTrace();
 		}
 	}
 
-	public void getObject(String bucket, String key, Map<String, String> query) {
+	public void getObject(String bucketName, String key, Map<String, String> query) {
 		try {
 			String filename = new File(key).getName();
-			GetObjectRequest req = new GetObjectRequest(bucket, key);
+			GetObjectRequest req = new GetObjectRequest(bucketName, key);
 			if (query != null) {
 				for (String hk : query.keySet()) {
 					String hv = query.get(hk);
@@ -211,6 +239,18 @@ public class S3Cli {
 					}
 				}
 			}
+
+			if (this.presign) {
+				// Set the presigned URL to expire after one hour.
+				java.util.Date expiration = new java.util.Date();
+				long expTimeMillis = Instant.now().toEpochMilli();
+				expTimeMillis += this.expire *60 *1000;
+				expiration.setTime(expTimeMillis);
+				URL url = s3.generatePresignedUrl(bucketName, key, expiration, HttpMethod.GET);
+				System.out.println(url.toString());
+				return;
+			}
+
 			S3Object o = s3.getObject(req);
 			S3ObjectInputStream s3is = o.getObjectContent();
 			FileOutputStream fos = new FileOutputStream(filename);
@@ -234,10 +274,40 @@ public class S3Cli {
 		}
 	}
 
-	public void deleteObject(String bucket, String key) {
+	public void deleteObject(String bucketName, String key) {
 		try {
-			s3.deleteObject(bucket, key);
-			System.out.println(java.time.Clock.systemUTC().instant() + " delete " + bucket + "/" + key);
+			if (this.presign) {
+				// Set the presigned URL
+				java.util.Date expiration = new java.util.Date();
+				long expTimeMillis = Instant.now().toEpochMilli();
+				expTimeMillis += this.expire *60 *1000;
+				expiration.setTime(expTimeMillis);
+				URL url = s3.generatePresignedUrl(bucketName, key, expiration, HttpMethod.DELETE);
+				System.out.println(url.toString());
+				return;
+			}
+			s3.deleteObject(bucketName, key);
+			System.out.println(java.time.Clock.systemUTC().instant() + " delete " + bucketName + "/" + key);
+		} catch (AmazonServiceException e) {
+			System.err.println(e.getErrorMessage());
+			System.exit(1);
+		}
+	}
+
+	public void deleteBucket(String bucket) {
+		try {
+			s3.deleteBucket(bucket);
+			System.out.println(java.time.Clock.systemUTC().instant() + " delete " + bucket);
+		} catch (AmazonServiceException e) {
+			System.err.println(e.getErrorMessage());
+			System.exit(1);
+		}
+	}
+
+	public void createBucket(String bucket) {
+		try {
+			s3.createBucket(bucket);
+			System.out.println(java.time.Clock.systemUTC().instant() + " create " + bucket);
 		} catch (AmazonServiceException e) {
 			System.err.println(e.getErrorMessage());
 			System.exit(1);
@@ -250,8 +320,19 @@ public class S3Cli {
 				boolean result = s3.doesBucketExistV2(bucket);
 				System.out.println(java.time.Clock.systemUTC().instant() + " head " + bucket + " " + result);
 			} else {
+				if (this.presign) {
+					// Set the presigned URL
+					java.util.Date expiration = new java.util.Date();
+					long expTimeMillis = Instant.now().toEpochMilli();
+					expTimeMillis += this.expire *60 *1000;
+					expiration.setTime(expTimeMillis);
+					URL url = s3.generatePresignedUrl(bucket, key, expiration, HttpMethod.HEAD);
+					System.out.println(url.toString());
+					return;
+				}
 				boolean result = s3.doesObjectExist(bucket, key);
-				System.out.println(java.time.Clock.systemUTC().instant() + " head " + bucket + "/" + key + " " + result);
+				System.out
+						.println(java.time.Clock.systemUTC().instant() + " head " + bucket + "/" + key + " " + result);
 			}
 		} catch (AmazonServiceException e) {
 			System.err.println(e.getErrorMessage());

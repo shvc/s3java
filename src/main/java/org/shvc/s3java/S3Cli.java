@@ -199,10 +199,19 @@ public class S3Cli {
 		}
 	}
 
-	public void getObject(String bucket, String key) {
+	public void getObject(String bucket, String key, Map<String, String> query) {
 		try {
 			String filename = new File(key).getName();
-			S3Object o = s3.getObject(bucket, key);
+			GetObjectRequest req = new GetObjectRequest(bucket, key);
+			if (query != null) {
+				for (String hk : query.keySet()) {
+					String hv = query.get(hk);
+					if (!hk.equals("") && !hv.equals("")) {
+						req.putCustomQueryParameter(hk, hv);
+					}
+				}
+			}
+			S3Object o = s3.getObject(req);
 			S3ObjectInputStream s3is = o.getObjectContent();
 			FileOutputStream fos = new FileOutputStream(filename);
 			byte[] buf = new byte[4096];

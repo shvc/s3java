@@ -82,6 +82,9 @@ public class Main implements Runnable {
 	@Option(names = {"-H", "--header"}, showDefaultValue = CommandLine.Help.Visibility.ON_DEMAND, arity = "0..*", paramLabel = "Key=Value", description = "S3 Client request header")
 	private Map<String, String> header;
 
+	@Option(names = {"-Q", "--query"}, showDefaultValue = CommandLine.Help.Visibility.ON_DEMAND, arity = "0..*", paramLabel = "Key=Value", description = "S3 Client request query parameter")
+	private Map<String, String> query;
+
 	private int executionStrategy(CommandLine.ParseResult parseResult) {
 		init(); // custom initialization to be done before executing any command or subcommand
 		return new CommandLine.RunLast().execute(parseResult); // default execution strategy
@@ -214,10 +217,10 @@ public class Main implements Runnable {
 				  @Parameters(arity = "0..*", index = "1+", paramLabel = "Key", description = "other Object(Key) to delete") String[] keys) {
 		String bucket = keyInStr(bucketKey, '/');
 		String key = valueInStr(bucketKey, '/');
-		cli.getObject(bucket, key);
+		cli.getObject(bucket, key, query);
 		if (keys != null) {
 			for (String k : keys) {
-				cli.getObject(bucket, k);
+				cli.getObject(bucket, k, query);
 			}
 		}
 	}

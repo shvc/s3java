@@ -91,7 +91,7 @@ public class Main implements Runnable {
 
 	@Option(names = {
 			"--presign-exp" }, showDefaultValue = CommandLine.Help.Visibility.ALWAYS, description = "presign Request expiration duration in minutes")
-	private long presignExp = 24*60;
+	private long presignExp = 24 * 60;
 
 	@Option(names = {
 			"--v2sign" }, showDefaultValue = CommandLine.Help.Visibility.ALWAYS, description = "S3 Client signature v2")
@@ -260,8 +260,10 @@ public class Main implements Runnable {
 			cli.deleteBucket(bucket);
 		} else {
 			cli.deleteObject(bucket, key);
-			for (String k : keys) {
-				cli.deleteObject(bucket, k);
+			if (keys != null) {
+				for (String k : keys) {
+					cli.deleteObject(bucket, k);
+				}
 			}
 		}
 	}

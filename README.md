@@ -1,12 +1,13 @@
 ## s3java
-s3java is [s3cli](https://github.com/shvc/s3cli) java edition.  
+s3java is a java edition [s3cli](https://github.com/shvc/s3cli)  
 Inspired by [awssdk](https://github.com/awsdocs/aws-doc-sdk-examples)
 
-#### Download prebuild binary
-https://github.com/shvc/s3java/releases  
+#### Download prebuild [binary](https://github.com/shvc/s3java/releases)  
 
-#### Build fat jar
+#### Or build fat jar from source
 ```
+git clone https://github.com/shvc/s3java
+cd s3java
 gradle jar
 ```
 

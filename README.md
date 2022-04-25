@@ -12,6 +12,11 @@ gradle jar
 ```
 
 ## Usage
+#### Create alias
+```
+s3java='java -jar /path/to/s3java-1.1.jar'
+s3java -h
+```
 #### Bucket
 ```shell
 # create Bucket

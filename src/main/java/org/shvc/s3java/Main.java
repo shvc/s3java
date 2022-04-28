@@ -98,7 +98,7 @@ public class Main implements Runnable {
 	private boolean signV2 = false;
 
 	@Option(names = {
-			"--chunked-encoding" }, showDefaultValue = CommandLine.Help.Visibility.ALWAYS, description = "S3 Client chunked-encoding")
+			"--chunked-encoding" }, showDefaultValue = CommandLine.Help.Visibility.ALWAYS, description = "S3 Client chunked-encoding(x-amz-content-sha256: STREAMING-AWS4-HMAC-SHA256-PAYLOAD)")
 	private boolean chunkedEncoding = false;
 
 	@Option(names = { "-H",
@@ -192,7 +192,7 @@ public class Main implements Runnable {
 				.withClientConfiguration(cfg)
 				.withPathStyleAccessEnabled(pathStyle)
 				.enablePayloadSigning()
-				.withChunkedEncodingDisabled(chunkedEncoding)
+				.withChunkedEncodingDisabled(!chunkedEncoding)
 				.withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration(endpoint, region))
 				.withCredentials(new AWSStaticCredentialsProvider(cred))
 				.build();

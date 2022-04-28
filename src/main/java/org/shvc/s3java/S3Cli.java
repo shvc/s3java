@@ -27,7 +27,7 @@ import java.time.Instant;
 
 public class S3Cli {
 	private AmazonS3 s3;
-	private  boolean presign;
+	private boolean presign;
 	private long expire;
 
 	public S3Cli(AmazonS3 s3) {
@@ -111,7 +111,7 @@ public class S3Cli {
 				// Set the presigned URL
 				java.util.Date expiration = new java.util.Date();
 				long expTimeMillis = Instant.now().toEpochMilli();
-				expTimeMillis += this.expire *60 *1000;
+				expTimeMillis += this.expire * 60 * 1000;
 				expiration.setTime(expTimeMillis);
 				URL url = s3.generatePresignedUrl(bucketName, key, expiration, HttpMethod.PUT);
 				System.out.println(url.toString());
@@ -128,7 +128,7 @@ public class S3Cli {
 				}
 			}
 			PutObjectRequest request = new PutObjectRequest(bucketName, key, input, objMetadata);
-			//request.setMetadata(objMetadata);
+			// request.setMetadata(objMetadata);
 
 			s3.putObject(request);
 			System.out.println(java.time.Clock.systemUTC().instant() + " upload " + bucketName + "/" + key);
@@ -243,7 +243,7 @@ public class S3Cli {
 				// Set the presigned URL to expire after one hour.
 				java.util.Date expiration = new java.util.Date();
 				long expTimeMillis = Instant.now().toEpochMilli();
-				expTimeMillis += this.expire *60 *1000;
+				expTimeMillis += this.expire * 60 * 1000;
 				expiration.setTime(expTimeMillis);
 				URL url = s3.generatePresignedUrl(bucketName, key, expiration, HttpMethod.GET);
 				System.out.println(url.toString());
@@ -273,7 +273,6 @@ public class S3Cli {
 		}
 	}
 
-
 	public void catObject(String bucketName, String key, Map<String, String> query) {
 		try {
 			GetObjectRequest req = new GetObjectRequest(bucketName, key);
@@ -290,7 +289,7 @@ public class S3Cli {
 				// Set the presigned URL to expire after one hour.
 				java.util.Date expiration = new java.util.Date();
 				long expTimeMillis = Instant.now().toEpochMilli();
-				expTimeMillis += this.expire *60 *1000;
+				expTimeMillis += this.expire * 60 * 1000;
 				expiration.setTime(expTimeMillis);
 				URL url = s3.generatePresignedUrl(bucketName, key, expiration, HttpMethod.GET);
 				System.out.println(url.toString());
@@ -306,7 +305,7 @@ public class S3Cli {
 			}
 			System.out.print(result.toString("UTF-8"));
 			s3is.close();
-			
+
 		} catch (AmazonServiceException e) {
 			System.err.println(e.getErrorMessage());
 			System.exit(1);
@@ -325,7 +324,7 @@ public class S3Cli {
 				// Set the presigned URL
 				java.util.Date expiration = new java.util.Date();
 				long expTimeMillis = Instant.now().toEpochMilli();
-				expTimeMillis += this.expire *60 *1000;
+				expTimeMillis += this.expire * 60 * 1000;
 				expiration.setTime(expTimeMillis);
 				URL url = s3.generatePresignedUrl(bucketName, key, expiration, HttpMethod.DELETE);
 				System.out.println(url.toString());
@@ -369,7 +368,7 @@ public class S3Cli {
 					// Set the presigned URL
 					java.util.Date expiration = new java.util.Date();
 					long expTimeMillis = Instant.now().toEpochMilli();
-					expTimeMillis += this.expire *60 *1000;
+					expTimeMillis += this.expire * 60 * 1000;
 					expiration.setTime(expTimeMillis);
 					URL url = s3.generatePresignedUrl(bucket, key, expiration, HttpMethod.HEAD);
 					System.out.println(url.toString());

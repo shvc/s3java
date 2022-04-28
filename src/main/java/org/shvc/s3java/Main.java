@@ -317,6 +317,7 @@ public class Main implements Runnable {
 		}
 	}
 
+	// min part size: TransferManagerConfiguration.DEFAULT_MINIMUM_UPLOAD_PART_SIZE
 	@Command(name = "mpu", description = "mpu file")
 	void mpu(@Option(names = {
 			"--content-type" }, paramLabel = "<Content-Type>", defaultValue = "application/octet-stream") String contentType,

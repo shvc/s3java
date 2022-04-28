@@ -36,6 +36,7 @@ java -jar s3java-1.1.jar -e http://192.168.56.3:9000 -a root -s ChangeMe delete 
 - upload(put) Objcet(s)  
 ```shell
 # upload file(s)
+java -jar s3java-1.1.jar upload bucket-name/k0 --data KKKK          # upload a Object(k0) with content KKKK
 java -jar s3java-1.1.jar upload bucket-name/k1 /etc/hosts           # upload a file and specify Key(k1)
 java -jar s3java-1.1.jar --v2sign upload bucket-name/k2 /etc/hosts  # upload(V2 sign) a file and specify Key(k2)
 java -jar s3java-1.1.jar upload bucket-name /etc/hosts              # upload a file and use filename(hosts) as Key
@@ -47,7 +48,7 @@ java -jar s3java-1.1.jar --presign --v2sign put bucket-name/k4 file # presign(V2
 - download(get) Object(s)  
 ```shell
 # download Object(s)
-java -jar s3java-1.1.jar download bucket-name/k1                    # download Object(k1) to current dir
+java -jar s3java-1.1.jar download bucket-name/k0                    # download Object(k0) to current dir
 java -jar s3java-1.1.jar --v2sign download bucket-name/k2           # download(V2 sign) Object(k2) to current dir
 java -jar s3java-1.1.jar download bucket-name/k1 k2 k3              # download Objects(k1, k2 and k3) to current dir
 java -jar s3java-1.1.jar --presign download bucket-name/k1          # presign(V4) a GET Object URL
@@ -66,7 +67,7 @@ java -jar s3java-1.1.jar list-v2 bucket-name/prefix # listObjects v2 with specif
 - delete(rm) Object(s)  
 ```shell
 # delete Object(s)
-java -jar s3java-1.1.jar delete bucket-name/k1                    # delete an Object
+java -jar s3java-1.1.jar delete bucket-name/k0                    # delete an Object
 java -jar s3java-1.1.jar delete bucket-name/k1 k2 k3              # delete Objects
 java -jar s3java-1.1.jar --presign delete bucket-name/hosts       # presign(V4) an DELETE Object URL
 java -jar s3java-1.1.jar --presign --v2sign delete bucket-name/k4 # presign(V2) an DELETE Object URL

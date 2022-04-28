@@ -12,7 +12,11 @@ import com.amazonaws.services.s3.model.Region;
 import picocli.CommandLine;
 import picocli.CommandLine.*;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 @Command(name = "s3java", mixinStandardHelpOptions = true, version = { "s3java: 1.0",
@@ -250,6 +254,14 @@ public class Main implements Runnable {
 		}
 	}
 
+	@Command(name = "cat", description = "Print a Object content")
+	void cat(
+			@Parameters(arity = "1", index = "0", paramLabel = "<Bucket/Key>", description = "Bucket/Key name") String bucketKey) {
+		String bucket = keyInStr(bucketKey, '/');
+		String key = valueInStr(bucketKey, '/');
+		cli.catObject(bucket, key, query);
+	}
+
 	@Command(name = "delete", aliases = { "rm" }, description = "delete Object(s)")
 	void delete(
 			@Parameters(arity = "1", index = "0", paramLabel = "<Bucket/Key>", description = "Bucket/Key name") String bucketKey,
@@ -280,20 +292,27 @@ public class Main implements Runnable {
 			"--content-type" }, paramLabel = "<Content-Type>", defaultValue = "application/octet-stream") String contentType,
 			@Option(names = { "--metadata",
 					"--md" }, arity = "1..*", paramLabel = "<Key=Value>") Map<String, String> metadata,
+			@Option(names = { "--data" }, paramLabel = "<Content>") String content,
 			@Parameters(arity = "1", index = "0", paramLabel = "<Bucket[/Key]>", description = "Bucket/Key or Bucket/Prefix") String bucketKey,
-			@Parameters(arity = "1..*", index = "1+", paramLabel = "file", description = "locale file(s) to upload") String[] files) {
+			@Parameters(arity = "0..*", index = "0+", paramLabel = "file", description = "locale file(s) to upload") String[] files)
+			throws FileNotFoundException {
 		String bucket = keyInStr(bucketKey, '/');
 		String key = valueInStr(bucketKey, '/');
-		if (files.length == 1) {
-			cli.putObject(bucket, key, files[0], contentType, metadata);
+		if (files == null) {
+			cli.putObject(bucket, key, new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8)), contentType,
+					metadata);
+		} else if (files.length == 1) {
+			cli.putObject(bucket, key, new FileInputStream(new File(files[0])), contentType, metadata);
 		} else {
 			// Bucket/Prefix mode
 			for (String file : files) {
-				String newKey = new File(file).getName();
+				File fd = new File(file);
+				String newKey = fd.getName();
 				if (!key.equals("")) {
 					newKey = key + newKey;
 				}
-				cli.putObject(bucket, newKey, file, contentType, metadata);
+
+				cli.putObject(bucket, newKey, new FileInputStream(fd), contentType, metadata);
 			}
 		}
 	}

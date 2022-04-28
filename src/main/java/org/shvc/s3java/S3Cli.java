@@ -15,7 +15,9 @@ import com.amazonaws.services.s3.transfer.TransferManager;
 import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
 import com.amazonaws.services.s3.transfer.Upload;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.InputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.util.List;
@@ -102,12 +104,8 @@ public class S3Cli {
 		}
 	}
 
-	public void putObject(String bucketName, String key, String filename, String contentType,
+	public void putObject(String bucketName, String key, InputStream input, String contentType,
 			Map<String, String> metadata) {
-		File inputFile = new File(filename);
-		if (key.equals("")) {
-			key = inputFile.getName();
-		}
 		try {
 			if (this.presign) {
 				// Set the presigned URL
@@ -119,7 +117,6 @@ public class S3Cli {
 				System.out.println(url.toString());
 				return;
 			}
-			PutObjectRequest request = new PutObjectRequest(bucketName, key, inputFile);
 			ObjectMetadata objMetadata = new ObjectMetadata();
 			objMetadata.setContentType(contentType);
 			if (metadata != null) {
@@ -130,7 +127,9 @@ public class S3Cli {
 					}
 				}
 			}
-			request.setMetadata(objMetadata);
+			PutObjectRequest request = new PutObjectRequest(bucketName, key, input, objMetadata);
+			//request.setMetadata(objMetadata);
+
 			s3.putObject(request);
 			System.out.println(java.time.Clock.systemUTC().instant() + " upload " + bucketName + "/" + key);
 		} catch (AmazonServiceException e) {
@@ -262,6 +261,52 @@ public class S3Cli {
 			s3is.close();
 			fos.close();
 			System.out.println(java.time.Clock.systemUTC().instant() + " download " + filename);
+		} catch (AmazonServiceException e) {
+			System.err.println(e.getErrorMessage());
+			System.exit(1);
+		} catch (FileNotFoundException e) {
+			System.err.println(e.getMessage());
+			System.exit(1);
+		} catch (Exception e) {
+			System.err.println(e.getMessage());
+			System.exit(1);
+		}
+	}
+
+
+	public void catObject(String bucketName, String key, Map<String, String> query) {
+		try {
+			GetObjectRequest req = new GetObjectRequest(bucketName, key);
+			if (query != null) {
+				for (String hk : query.keySet()) {
+					String hv = query.get(hk);
+					if (!hk.equals("") && !hv.equals("")) {
+						req.putCustomQueryParameter(hk, hv);
+					}
+				}
+			}
+
+			if (this.presign) {
+				// Set the presigned URL to expire after one hour.
+				java.util.Date expiration = new java.util.Date();
+				long expTimeMillis = Instant.now().toEpochMilli();
+				expTimeMillis += this.expire *60 *1000;
+				expiration.setTime(expTimeMillis);
+				URL url = s3.generatePresignedUrl(bucketName, key, expiration, HttpMethod.GET);
+				System.out.println(url.toString());
+				return;
+			}
+
+			S3ObjectInputStream s3is = s3.getObject(req).getObjectContent();
+			ByteArrayOutputStream result = new ByteArrayOutputStream();
+			byte[] buf = new byte[4096];
+			int length = 0;
+			while ((length = s3is.read(buf)) > 0) {
+				result.write(buf, 0, length);
+			}
+			System.out.print(result.toString("UTF-8"));
+			s3is.close();
+			
 		} catch (AmazonServiceException e) {
 			System.err.println(e.getErrorMessage());
 			System.exit(1);

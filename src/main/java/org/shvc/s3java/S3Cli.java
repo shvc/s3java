@@ -25,6 +25,7 @@ import java.util.Map;
 import java.net.URL;
 import java.time.Instant;
 
+import com.amazonaws.auth.SignerFactory;
 public class S3Cli {
 	private AmazonS3 s3;
 	private boolean presign;
@@ -96,8 +97,13 @@ public class S3Cli {
 		}
 	}
 
-	public void listObjects(String bucket, String prefix, boolean all) {
-		ObjectListing result = s3.listObjects(bucket, prefix);
+	public void listObjects(String bucketName, String prefix, boolean all) {
+		ListObjectsRequest lsReq = new ListObjectsRequest();
+		lsReq.setBucketName(bucketName);
+		if(!prefix.equals("")) {
+			lsReq.setPrefix(prefix);
+		}
+		ObjectListing result = s3.listObjects(lsReq);
 		List<S3ObjectSummary> objects = result.getObjectSummaries();
 		for (S3ObjectSummary o : objects) {
 			System.out.println("* " + o.getKey());

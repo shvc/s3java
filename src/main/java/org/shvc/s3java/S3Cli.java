@@ -24,8 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.net.URL;
 import java.time.Instant;
-
-import com.amazonaws.auth.SignerFactory;
 public class S3Cli {
 	private AmazonS3 s3;
 	private boolean presign;

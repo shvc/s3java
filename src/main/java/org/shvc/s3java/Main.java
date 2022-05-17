@@ -102,6 +102,10 @@ public class Main implements Runnable {
 	private boolean signV2 = false;
 
 	@Option(names = {
+			"--noproxy" }, showDefaultValue = CommandLine.Help.Visibility.ALWAYS, description = "S3 Client not use proxy")
+	private boolean noProxy = false;
+
+	@Option(names = {
 			"--chunked-encoding" }, showDefaultValue = CommandLine.Help.Visibility.ALWAYS, description = "S3 Client chunked-encoding(x-amz-content-sha256: STREAMING-AWS4-HMAC-SHA256-PAYLOAD)")
 	private boolean chunkedEncoding = false;
 
@@ -119,6 +123,13 @@ public class Main implements Runnable {
 	}
 
 	private void init() {
+		if (noProxy) {
+			System.setProperty("http.proxyHost", "");
+			System.setProperty("http.proxyPort", "");
+			System.setProperty("https.proxyHost", "");
+			System.setProperty("https.proxyPort", "");
+		}
+
 		cli = new S3Cli(s3Client(), this.presign, this.presignExp);
 	}
 
@@ -130,6 +141,7 @@ public class Main implements Runnable {
 	public static void main(String[] args) {
 		System.setProperty("org.apache.commons.logging.Log", "org.apache.commons.logging.impl.NoOpLog");
 		System.setProperty("com.amazonaws.sdk.disableCertChecking", "true");
+
 		Main app = new Main();
 		CommandLine cmd = new CommandLine(app).setExecutionStrategy(app::executionStrategy);
 
@@ -165,8 +177,7 @@ public class Main implements Runnable {
 				.withMaxConnections(maxConnections)
 				.withConnectionTTL(connectionTTL)
 				.withConnectionMaxIdleMillis(connectionMaxIdleMillis)
-				.withTcpKeepAlive(tcpKeepAlive)
-				.withDisableSocketProxy(true);
+				.withTcpKeepAlive(tcpKeepAlive);
 
 		if (header != null) {
 			for (String hk : header.keySet()) {

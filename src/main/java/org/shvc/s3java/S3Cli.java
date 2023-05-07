@@ -14,16 +14,20 @@ import com.amazonaws.services.s3.model.*;
 import com.amazonaws.services.s3.transfer.TransferManager;
 import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
 import com.amazonaws.services.s3.transfer.Upload;
+import com.amazonaws.services.s3.model.DeleteObjectsRequest;
+import com.amazonaws.services.s3.model.DeleteObjectsRequest.KeyVersion;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.InputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.net.URL;
 import java.time.Instant;
+
 public class S3Cli {
 	private AmazonS3 s3;
 	private boolean presign;
@@ -98,7 +102,7 @@ public class S3Cli {
 	public void listObjects(String bucketName, String prefix, boolean all) {
 		ListObjectsRequest lsReq = new ListObjectsRequest();
 		lsReq.setBucketName(bucketName);
-		if(!prefix.equals("")) {
+		if (!prefix.equals("")) {
 			lsReq.setPrefix(prefix);
 		}
 		ObjectListing result = s3.listObjects(lsReq);
@@ -338,6 +342,34 @@ public class S3Cli {
 			System.out.println(java.time.Clock.systemUTC().instant() + " delete " + bucketName + "/" + key);
 		} catch (AmazonServiceException e) {
 			System.err.println(e.getErrorMessage());
+			System.exit(1);
+		}
+	}
+
+	public void deleteObjects(String bucketName, String[] keys, String key) {
+		try {
+			if (this.presign) {
+				// Set the presigned URL
+				System.out.println("not ready");
+				return;
+			}
+
+			ArrayList<KeyVersion> objects = new ArrayList<KeyVersion>();
+			for (int i = 0; i < keys.length; i++) {
+				objects.add(new KeyVersion(keys[i]));
+			}
+			if (key != null) {
+				objects.add(new KeyVersion(key));
+			}
+
+			DeleteObjectsRequest multiObjectDeleteRequest = new DeleteObjectsRequest(bucketName)
+					.withKeys(objects)
+					.withQuiet(true);
+
+			s3.deleteObjects(multiObjectDeleteRequest);
+
+			System.out.println(java.time.Clock.systemUTC().instant() + " delete Objects");
+		} catch (AmazonServiceException e) {
 			System.exit(1);
 		}
 	}

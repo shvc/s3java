@@ -37,7 +37,7 @@ public class Main implements Runnable {
 			"--endpoint" }, showDefaultValue = CommandLine.Help.Visibility.ALWAYS, description = "S3 endpoint")
 	private String endpoint = DEFAULT_ENDPOINT;
 
-	@Option(names = { "-r",
+	@Option(names = { "-R",
 			"--region" }, showDefaultValue = CommandLine.Help.Visibility.ALWAYS, description = "S3 endpoint")
 	private String region = Region.CN_Beijing.toString();
 
@@ -281,13 +281,10 @@ public class Main implements Runnable {
 		String key = valueInStr(bucketKey, '/');
 		if (keys == null && key.equals("")) {
 			cli.deleteBucket(bucket);
-		} else {
+		} else if (keys == null) {
 			cli.deleteObject(bucket, key);
-			if (keys != null) {
-				for (String k : keys) {
-					cli.deleteObject(bucket, k);
-				}
-			}
+		} else {
+			cli.deleteObjects(bucket, keys, key);
 		}
 	}
 

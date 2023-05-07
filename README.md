@@ -4,7 +4,7 @@ Inspired by [awssdk](https://github.com/awsdocs/aws-doc-sdk-examples) examples
 
 #### Download prebuilt [binary](https://github.com/shvc/s3java/releases)
 
-#### Or build fat jar from source
+#### Or build your fat jar from source
 ```
 # need gradle7 or above
 git clone https://github.com/shvc/s3java
@@ -70,7 +70,7 @@ s3java list-v2 bucket-name/prefix # listObjects v2 with specified prefix
 ```shell
 # delete Object(s)
 s3java delete bucket-name/k0                    # delete an Object
-s3java delete bucket-name/k1 k2 k3                 # delete Objects
+s3java delete bucket-name/k1 k2 k3              # delete Objects
 s3java --presign delete bucket-name/hosts       # presign(V4) an DELETE Object URL
 s3java --presign --v2sign delete bucket-name/k4 # presign(V2) an DELETE Object URL
 ```

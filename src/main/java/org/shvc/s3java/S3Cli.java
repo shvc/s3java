@@ -368,8 +368,9 @@ public class S3Cli {
 
 			s3.deleteObjects(multiObjectDeleteRequest);
 
-			System.out.println(java.time.Clock.systemUTC().instant() + " delete Objects");
+			System.out.println(java.time.Clock.systemUTC().instant() + " delete Objects success");
 		} catch (AmazonServiceException e) {
+			System.err.println(e.getErrorMessage());
 			System.exit(1);
 		}
 	}

@@ -4,12 +4,15 @@ Inspired by [awssdk](https://github.com/awsdocs/aws-doc-sdk-examples) examples
 
 #### Download prebuilt [binary](https://github.com/shvc/s3java/releases)
 
-#### Or build your fat jar from source
+#### Or build your fat jar(uber-jar) from source
+- gradle(gradle7 or above)  
 ```
-# need gradle7 or above
-git clone https://github.com/shvc/s3java
-cd s3java
 gradle jar
+```
+
+- maven  
+```
+mvn package
 ```
 
 ## Usage

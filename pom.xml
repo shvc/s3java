@@ -32,6 +32,13 @@
       <artifactId>aws-java-sdk-core</artifactId>
       <version>1.12.494</version>
     </dependency>
+    <!-- https://mvnrepository.com/artifact/info.picocli/picocli -->
+    <dependency>
+      <groupId>info.picocli</groupId>
+      <artifactId>picocli</artifactId>
+      <version>4.7.4</version>
+    </dependency>
+
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-slf4j-impl</artifactId>

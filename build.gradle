@@ -11,8 +11,8 @@ repositories {
 }
 
 dependencies {
-    implementation group: 'com.amazonaws', name: 'aws-java-sdk-core', version: '1.12.147'
-    implementation group: 'com.amazonaws', name: 'aws-java-sdk-s3', version: '1.12.147'
+    implementation group: 'com.amazonaws', name: 'aws-java-sdk-core', version: '1.12.494'
+    implementation group: 'com.amazonaws', name: 'aws-java-sdk-s3', version: '1.12.494'
     implementation 'info.picocli:picocli:4.6.2'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
